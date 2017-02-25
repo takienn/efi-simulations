@@ -5,145 +5,119 @@
  *      Author: kentux
  */
 
-#include "ns3/core-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/wifi-module.h"
 #include "ns3/spectrum-module.h"
 #include "ns3/applications-module.h"
 #include "ns3/network-module.h"
 #include "ns3/propagation-module.h"
 #include "ns3/config-store-module.h"
 #include "ns3/log.h"
-#include "ns3/error-model.h"
+
+#include "wifi-survive.h"
 
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("WifiSurvive");
 
+NS_OBJECT_ENSURE_REGISTERED (PsrErrorRateModel);
 
-
-/**
- *
- * A model for the error rate based on manually set PER values,
- * related to simulating E-FI paper proposal.
- */
-class PsrErrorRateModel : public ErrorRateModel
+TypeId PsrErrorRateModel::GetTypeId (void)
 {
-public:
-  /**
-   * \brief Get the type ID.
-   * \return the object TypeId
-   */
-  static TypeId GetTypeId (void)
-  {
-    static TypeId tid = TypeId ("ns3::PsrErrorRateModel")
-      .SetParent<ErrorRateModel> ()
-      .SetGroupName ("Wifi")
-      .AddConstructor<PsrErrorRateModel> ()
-      .AddAttribute("rate", "Error Rate", DoubleValue(0.0),
-		    MakeDoubleAccessor(&PsrErrorRateModel::GetRate,
-				       &PsrErrorRateModel::SetRate),
-		    MakeDoubleChecker<double>(0.0, 1.0))
-    ;
-    return tid;
-  };
+  static TypeId tid = TypeId ("ns3::PsrErrorRateModel")
+    .SetParent<ErrorRateModel> ()
+    .SetGroupName ("Wifi")
+    .AddConstructor<PsrErrorRateModel> ()
+    .AddAttribute("rate", "Error Rate", DoubleValue(0.0),
+		  MakeDoubleAccessor(&PsrErrorRateModel::m_rate),
+		  MakeDoubleChecker<double>(0.0, 1.0))
+  ;
+  return tid;
+};
 
-  PsrErrorRateModel ()
-  : m_rate(0.0)
-  {
+PsrErrorRateModel::PsrErrorRateModel ()
+: m_rate(0.0)
+{
 
-  };
+};
 
-  double GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector, double snr, uint32_t nbits) const
-  {
+PsrErrorRateModel::~PsrErrorRateModel ()
+{
+
+};
+
+double PsrErrorRateModel::GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector, double snr, uint32_t nbits) const
+{
 //    return m_ranvar->GetValue () < m_rate? 0.0:1.0;
-    return (1 - m_rate); //TODO too simple, maybe needs some testing
-  };
-
-  /**
-   * \returns the error rate being applied by the model
-   */
-  double GetRate (void) const
-  {
-    return m_rate;
-  };
-  /**
-   * \param rate the error rate to be used by the model
-   */
-  void SetRate (double rate)
-  {
-    m_rate = rate;
-  };
-
-  /**
-   * \param ranvar A random variable distribution to generate random variables
-   */
-  void SetRandomVariable (Ptr<RandomVariableStream> ranvar)
-  {
-    m_ranvar = ranvar;
-  };
-
-private:
-  double m_rate;
-  Ptr<RandomVariableStream> m_ranvar;
-
+  return (1 - m_rate); //TODO too simple, maybe needs some testing
 };
 
-class NodeSpec
+
+double PsrErrorRateModel::GetRate (void) const
 {
-public:
-  NodeSpec ():m_type(STA), m_psr(1){}
-  virtual ~NodeSpec(){}
-
-  enum NodeType
-  {
-    AP = 0,
-    RELAY = 1,
-    STA = 2
-  };
-
-  void SetType (NodeType type)
-  {
-    m_type = type;
-  }
-
-  NodeType GetType (void)
-  {
-    return m_type;
-  }
-
-  void SetPsr (double psr)
-  {
-    m_psr = psr;
-  }
-
-  double GetPsr (void)
-  {
-    return m_psr;
-  }
-
-  void SetPosition (Vector2D pos)
-  {
-    m_pos = pos;
-  }
-
-  Vector2D GetPosition (void)
-  {
-    return m_pos;
-  }
-
-private:
-  NodeType m_type;
-  double m_psr;
-  Vector2D m_pos;
+  return m_rate;
 };
+
+void PsrErrorRateModel::SetRate (double rate)
+{
+  m_rate = rate;
+};
+
+
+void PsrErrorRateModel::SetRandomVariable (Ptr<RandomVariableStream> ranvar)
+{
+  m_ranvar = ranvar;
+};
+
+
+
+NodeSpec::NodeSpec ()
+  :m_type(STA), m_psr(1)
+{
+
+}
+
+NodeSpec::~NodeSpec()
+{
+
+}
+
+void NodeSpec::SetType (NodeType type)
+{
+  m_type = type;
+}
+
+NodeSpec::NodeType NodeSpec::GetType (void)
+{
+  return m_type;
+}
+
+void NodeSpec::SetPsr (double psr)
+{
+  m_psr = psr;
+}
+
+double NodeSpec::GetPsr (void)
+{
+  return m_psr;
+}
+
+void NodeSpec::SetPosition (Vector2D pos)
+{
+  m_pos = pos;
+}
+
+Vector2D NodeSpec::GetPosition (void)
+{
+  return m_pos;
+}
+
 
 Ptr<WifiPhy>
-GetWifiPhyPtr (const NetDeviceContainer &nc)
+GetWifiPhyPtr (const NetDeviceContainer &devices)
 {
-  Ptr<WifiNetDevice> wnd = nc.Get (0)->GetObject<WifiNetDevice> ();
-  Ptr<WifiPhy> wp = wnd->GetPhy ();
-  return wp;
+  Ptr<WifiNetDevice> device = devices.Get (0)->GetObject<WifiNetDevice> ();
+  Ptr<WifiPhy> phy = device->GetPhy ();
+  return phy;
 }
 
 void
