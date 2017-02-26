@@ -30,13 +30,13 @@ public:
   NodeType GetType (void);
   void SetPsr (double psr);
   double GetPsr (void);
-  void SetPosition (Vector2D ps);
-  Vector2D GetPosition (void);
+  void SetPosition (Vector3D position);
+  Vector3D GetPosition (void);
 
 private:
   NodeType m_type;
   double m_psr;
-  Vector2D m_pos;
+  Vector3D m_position;
 };
 
 /**
@@ -70,6 +70,27 @@ public:
 private:
   double m_rate;
   Ptr<RandomVariableStream> m_ranvar;
+};
+
+class Experiment
+{
+public:
+  Experiment ();
+  virtual ~Experiment ();
+  void Initialize ();
+  NetDeviceContainer CreateCluster (std::vector<NodeSpec> clusterNodes);
+  NetDeviceContainer CreateMasterAp(NodeSpec apNodeSpec);
+  NetDeviceContainer ConnectRelayToAp();
+
+private:
+  Ptr<SpectrumChannel> m_channel;
+  WifiHelper m_wifiHelper;
+  SpectrumWifiPhyHelper m_wifiPhyHelper;
+  WifiMacHelper m_mac;
+  NetDeviceContainer m_apDevice;
+  NetDeviceContainer m_clusterDevices;
+  NetDeviceContainer m_relayDevice;
+
 };
 }
 #endif /* SCRATCH_WIFI_SURVIVE_H_ */
