@@ -10,6 +10,7 @@
 
 #include "ns3/core-module.h"
 #include "ns3/wifi-module.h"
+#include <map>
 
 namespace ns3 {
 
@@ -72,24 +73,59 @@ private:
   Ptr<RandomVariableStream> m_ranvar;
 };
 
+
+/*
+ * A class to organize basic steps used to create the simulation
+ */
 class Experiment
 {
 public:
   Experiment ();
   virtual ~Experiment ();
   void Initialize ();
-  NetDeviceContainer CreateCluster (std::vector<NodeSpec> clusterNodes);
-  NetDeviceContainer CreateMasterAp(NodeSpec apNodeSpec);
-  NetDeviceContainer ConnectRelayToAp();
 
+  void CreateNodes (std::vector<NodeSpec> nodes);
+
+  /*
+   * Creates the relay (always at index 0) ,
+   * and the clients connected to this relay (forming the cluster)
+   * and setup up addresses and networking stacks
+   */
+  NetDeviceContainer CreateCluster ();
+
+  /*
+   * Creates the Master Access Point to which the Relay should connect
+   * and setup up its addresses and networking stacks, and connect the relay
+   */
+
+  NetDeviceContainer CreateMasterAp();
+
+
+  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
+
+  void ReceivePacket (Ptr <Socket> socket);
+  void InstallApplications ();
+
+  std::map<Ptr<NetDevice>, uint64_t> GetPacketsTotal ();
+
+  NodeContainer GetNodes (NodeSpec::NodeType type) const;
+
+  void FixRouting (NodeContainer nodes);
 private:
-  Ptr<SpectrumChannel> m_channel;
-  WifiHelper m_wifiHelper;
-  SpectrumWifiPhyHelper m_wifiPhyHelper;
-  WifiMacHelper m_mac;
+  Ptr<SpectrumChannel> m_channel; // SpectrumChannel used across the whole simulation
   NetDeviceContainer m_apDevice;
   NetDeviceContainer m_clusterDevices;
-  NetDeviceContainer m_relayDevice;
+  NetDeviceContainer m_relayClusterDevice;
+  NetDeviceContainer m_relayToApDevice;
+
+  NodeContainer m_apNode;
+  NodeContainer m_relayNode;
+  NodeContainer m_clusterNodes;
+
+  std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
+  std::map<uint32_t, double> m_nodePsrValues;
+
+
 
 };
 }
