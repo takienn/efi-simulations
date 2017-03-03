@@ -17,6 +17,7 @@
 #include "wifi-survive.h"
 
 #include <ostream>
+#include <fstream>
 
 using namespace ns3;
 
@@ -330,9 +331,11 @@ Experiment::ReceivePacket (Ptr <Socket> socket)
   Ptr<Ipv4L3Protocol> ipv4l3p = socket->GetNode()->GetObject<Ipv4L3Protocol>();
   Ptr<NetDevice> device = ipv4l3p->GetInterface(ipv4l3p->GetInterfaceForAddress(iaddr.GetIpv4()))->GetDevice();
 
-  while (packet = socket->Recv ())
+  packet = socket->Recv();
+  while (packet)
     {
       m_packetsTotal[device]++;
+      packet = socket->Recv();
     }
 }
 
@@ -456,24 +459,41 @@ int main (int argc, char *argv[])
   Experiment experiment;
   experiment.Initialize();
 
-  std::vector<NodeSpec> nodes;
-  NodeSpec ns1;
-  ns1.SetPosition(Vector3D(20,20,0));
-  ns1.SetPsr(1);
-  ns1.SetType(NodeSpec::RELAY);
 
-  NodeSpec ns2;
-  ns2.SetPosition(Vector3D(40,20,0));
-  ns2.SetPsr(1);
-  ns2.SetType(NodeSpec::STA);
+  // Format of input files:
+  // n - test cases (e.g., 2)
+  // m - nodes in total (e.g., 3)
+  // i x y PER upStream - i, seq number; x y coordinates; PER; upStream, node
+  // connected
+
+
+  std::vector<NodeSpec> nodes;
+  std::string fileName = "testSpec.txt";
+  std::fstream testSpec(fileName, std::ios_base::in);
+
+  int n;
+  testSpec >> n;
+  std::cout << n << std::endl;
+
+
+
+  // NodeSpec ns1;
+  // ns1.SetPosition(Vector3D(20,20,0));
+  // ns1.SetPsr(1);
+  // ns1.SetType(NodeSpec::RELAY);
+
+  // NodeSpec ns2;
+  // ns2.SetPosition(Vector3D(40,20,0));
+  // ns2.SetPsr(1);
+  // ns2.SetType(NodeSpec::STA);
 
 //  NodeSpec ns3;
 //  ns3.SetPosition(Vector3D(20,40,0));
 //  ns3.SetPsr(1);
 //  ns3.SetType(NodeSpec::STA);
 
-  nodes.push_back(ns1);
-  nodes.push_back(ns2);
+  // nodes.push_back(ns1);
+  // nodes.push_back(ns2);
 //  clusterNodes.push_back(ns3);
 
   NodeSpec ap;
