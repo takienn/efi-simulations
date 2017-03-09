@@ -29,28 +29,29 @@ public:
 
   void SetType (NodeType type);
   NodeType GetType (void);
-  void SetPsr (double psr);
-  double GetPsr (void);
+  void SetPer (double Per);
+  double GetPer (void);
   void SetPosition (Vector3D position);
   Vector3D GetPosition (void);
-
+  void SetSsid (Ssid ssid);
+  Ssid GetSsid (void);
 private:
   NodeType m_type;
-  double m_psr;
+  double m_Per;
   Vector3D m_position;
+  Ssid m_ssid;
 };
 
 /**
- *
  * A model for the error rate based on manually set PER values,
  * related to simulating E-FI paper proposal.
  */
-class PsrErrorRateModel : public ErrorRateModel
+class PerErrorRateModel : public ErrorRateModel
 {
 public:
   static TypeId GetTypeId (void);
-  PsrErrorRateModel ();
-  virtual ~PsrErrorRateModel();
+  PerErrorRateModel ();
+  virtual ~PerErrorRateModel();
   double GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector, double snr, uint32_t nbits) const;
 
   /**
@@ -123,7 +124,7 @@ private:
   NodeContainer m_clusterNodes;
 
   std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
-  std::map<uint32_t, double> m_nodePsrValues;
+  std::map<uint32_t, double> m_nodePerValues;
 
 
 

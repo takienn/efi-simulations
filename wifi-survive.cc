@@ -25,62 +25,64 @@ uint16_t port = 9;
 
 NS_LOG_COMPONENT_DEFINE ("WifiSurvive");
 
-NS_OBJECT_ENSURE_REGISTERED (PsrErrorRateModel);
+NS_OBJECT_ENSURE_REGISTERED (PerErrorRateModel);
+
+////////// Implementing Per class //////////
 
 TypeId
-PsrErrorRateModel::GetTypeId (void)
+PerErrorRateModel::GetTypeId (void)
 {
   static TypeId tid =
-      TypeId ("ns3::PsrErrorRateModel").SetParent<ErrorRateModel> ().SetGroupName (
-	  "Wifi").AddConstructor<PsrErrorRateModel> ().AddAttribute (
+      TypeId ("ns3::PerErrorRateModel").SetParent<ErrorRateModel> ().SetGroupName (
+	  "Wifi").AddConstructor<PerErrorRateModel> ().AddAttribute (
 	  "rate", "Error Rate", DoubleValue (0.0),
-	  MakeDoubleAccessor (&PsrErrorRateModel::m_rate),
+	  MakeDoubleAccessor (&PerErrorRateModel::m_rate),
 	  MakeDoubleChecker<double> (0.0, 1.0));
   return tid;
 }
 
-PsrErrorRateModel::PsrErrorRateModel ()
+PerErrorRateModel::PerErrorRateModel ()
     : m_rate (0.0)
 {
 
 }
 
-PsrErrorRateModel::~PsrErrorRateModel ()
+PerErrorRateModel::~PerErrorRateModel ()
 {
 
 }
 
 double
-PsrErrorRateModel::GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector,
+PerErrorRateModel::GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector,
 					double snr, uint32_t nbits) const
 {
 //    return m_ranvar->GetValue () < m_rate? 0.0:1.0;
-  return (1 - m_rate); //TODO too simple, maybe needs some testing
+  return (m_rate); //TODO too simple, maybe needs some testing
 }
 
 double
-PsrErrorRateModel::GetRate (void) const
+PerErrorRateModel::GetRate (void) const
 {
   return m_rate;
 }
 
 void
-PsrErrorRateModel::SetRate (double rate)
+PerErrorRateModel::SetRate (double rate)
 {
   m_rate = rate;
 }
 
 void
-PsrErrorRateModel::SetRandomVariable (Ptr<RandomVariableStream> ranvar)
+PerErrorRateModel::SetRandomVariable (Ptr<RandomVariableStream> ranvar)
 {
   m_ranvar = ranvar;
 }
 
 
-////////// Implementing NodeSpec class ////////////////
+////////// Implementing NodeSpec class //////////
 
 NodeSpec::NodeSpec ()
-    : m_type (STA), m_psr (1)
+    : m_type (STA), m_Per (0)
 {
 
 }
@@ -103,15 +105,15 @@ NodeSpec::GetType (void)
 }
 
 void
-NodeSpec::SetPsr (double psr)
+NodeSpec::SetPer (double Per)
 {
-  m_psr = psr;
+  m_Per = Per;
 }
 
 double
-NodeSpec::GetPsr (void)
+NodeSpec::GetPer (void)
 {
-  return m_psr;
+  return m_Per;
 }
 
 void
@@ -124,6 +126,18 @@ Vector3D NodeSpec::GetPosition (void)
 {
   return m_position;
 }
+
+void NodeSpec::SetSsid (Ssid ssid)
+{
+  m_ssid = ssid;
+}
+
+Ssid NodeSpec::GetSsid (void)
+{
+  return m_ssid;
+}
+
+////////// Implementing Experiment class //////////
 
 Experiment::Experiment ()
 {
@@ -150,7 +164,7 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs)
       Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel> ();
       mobility->SetPosition(nodeSpecs[i].GetPosition());
       node->AggregateObject(mobility);
-      m_nodePsrValues[node->GetId()] = nodeSpecs[i].GetPsr();
+      m_nodePerValues[node->GetId()] = nodeSpecs[i].GetPer();
 
       if(nodeSpecs[i].GetType()==NodeSpec::RELAY)
 	m_relayNode.Add(node);
@@ -169,6 +183,12 @@ Experiment::CreateCluster ()
   wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
   //TODO Should the FragmentationThreshold be set here or not down for the client nodes?
   wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager", "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+
+// a brief Note
+//  - MCS0: 600 bits
+// 	- MCS1: 1300 bits
+// 	- MCS2: 2000 bits
+// 	- MCS3: 2700 bits
 
   SpectrumWifiPhyHelper wifiPhyHelper;
   wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
@@ -194,14 +214,19 @@ Experiment::CreateCluster ()
   m_relayClusterDevice.Add(relayDevice);
   m_packetsTotal[relayDevice.Get(0)] = 0;
 
-  macHelper.SetType ("ns3::StaWifiMac",
-		 "Ssid", SsidValue (ssid),
-		 "BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
-
-  for (uint32_t i =0; i < m_clusterNodes.GetN(); i++)
+  
+  for (uint32_t i = 0; i < m_clusterNodes.GetN(); i++)
     {
-      wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel",
-				      "rate", DoubleValue(1.0 - m_nodePsrValues[m_clusterNodes.Get(i)->GetId()]));
+      wifiPhyHelper.SetErrorRateModel("ns3::PerErrorRateModel",
+				      "rate", DoubleValue(1.0 - m_nodePerValues[m_clusterNodes.Get(i)->GetId()]));
+      
+      // ssid = m_clusterNodes.Get(i)->GetSsid?;
+      // how to assign ssid through NS3::Node?
+
+      macHelper.SetType ("ns3::StaWifiMac",
+		       "Ssid", SsidValue (ssid),
+		       "BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
+
       NetDeviceContainer staDevice = wifiHelper.Install (wifiPhyHelper, macHelper, m_clusterNodes.Get(i));
       m_clusterDevices.Add(staDevice);
       staDevice.Get(0)->GetObject<WifiNetDevice>()->GetMac()->TraceConnectWithoutContext ("Assoc", MakeCallback(&LogAssoc));
@@ -258,6 +283,12 @@ Experiment::CreateMasterAp()
   wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
 //  TODO Should the FragmentationThreshold be set here or not down for the client nodes?
   wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager");//, "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+
+// a brief Note
+//  - MCS0: 600 bits
+// 	- MCS1: 1300 bits
+// 	- MCS2: 2000 bits
+// 	- MCS3: 2700 bits
 
   SpectrumWifiPhyHelper wifiPhyHelper;
   wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
@@ -452,9 +483,9 @@ int main (int argc, char *argv[])
 {
   CommandLine cmd;
 
-  double psrTh = 0.8;
+  double PerTh = 0.8;
 
-  cmd.AddValue("psrTh","PSR Threshold that defines the zones", psrTh);
+  cmd.AddValue("PerTh","Per Threshold that defines the zones", PerTh);
 
   Experiment experiment;
   experiment.Initialize();
@@ -466,39 +497,36 @@ int main (int argc, char *argv[])
   // i x y PER upStream - i, seq number; x y coordinates; PER; upStream, node
   // connected
 
+  // std::string fileName = "testSpec.txt";
+  // std::fstream testSpec(fileName, std::ios_base::in);
+  // int n;
+  // testSpec >> n;
+  // std::cout << n << std::endl;
+
 
   std::vector<NodeSpec> nodes;
-  std::string fileName = "testSpec.txt";
-  std::fstream testSpec(fileName, std::ios_base::in);
+  NodeSpec ns1;
+  ns1.SetPosition(Vector3D(20,20,0));
+  ns1.SetPer(0);
+  ns1.SetType(NodeSpec::RELAY);
 
-  int n;
-  testSpec >> n;
-  std::cout << n << std::endl;
+  NodeSpec ns2;
+  ns2.SetPosition(Vector3D(40,20,0));
+  ns2.SetPer(0);
+  ns2.SetType(NodeSpec::STA);
 
+  NodeSpec ns3;
+  ns3.SetPosition(Vector3D(20,40,0));
+  ns3.SetPer(0);
+  ns3.SetType(NodeSpec::STA);
 
-
-  // NodeSpec ns1;
-  // ns1.SetPosition(Vector3D(20,20,0));
-  // ns1.SetPsr(1);
-  // ns1.SetType(NodeSpec::RELAY);
-
-  // NodeSpec ns2;
-  // ns2.SetPosition(Vector3D(40,20,0));
-  // ns2.SetPsr(1);
-  // ns2.SetType(NodeSpec::STA);
-
-//  NodeSpec ns3;
-//  ns3.SetPosition(Vector3D(20,40,0));
-//  ns3.SetPsr(1);
-//  ns3.SetType(NodeSpec::STA);
-
-  // nodes.push_back(ns1);
-  // nodes.push_back(ns2);
+  nodes.push_back(ns1);
+  nodes.push_back(ns2);
 //  clusterNodes.push_back(ns3);
 
   NodeSpec ap;
   ap.SetPosition(Vector3D(0,0,0));
-  ap.SetPsr(1); //TODO Should be ignored ?
+  ap.SetPer(0); //TODO Should be ignored ?
   ap.SetType(NodeSpec::AP);
 
   nodes.push_back(ap);
