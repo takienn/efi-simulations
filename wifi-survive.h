@@ -10,6 +10,7 @@
 
 #include "ns3/core-module.h"
 #include "ns3/wifi-module.h"
+#include "ns3/topology-reader.h"
 #include <map>
 
 namespace ns3 {
@@ -17,9 +18,6 @@ namespace ns3 {
 class NodeSpec
 {
 public:
-  NodeSpec ();
-  virtual ~NodeSpec ();
-
   enum NodeType
   {
     AP = 0,
@@ -27,17 +25,31 @@ public:
     STA = 2
   };
 
+  NodeSpec ();
+  NodeSpec (uint32_t id, NodeType type, double psr, Vector2D position, uint32_t relayId, double resourceRate);
+  NodeSpec (uint32_t id, NodeType type, double psr, Vector3D position, uint32_t relayId, double resourceRate);
+  virtual ~NodeSpec ();
+
+  void SetId (uint32_t id);
+  uint32_t GetId (void);
   void SetType (NodeType type);
   NodeType GetType (void);
   void SetPsr (double psr);
   double GetPsr (void);
   void SetPosition (Vector3D position);
   Vector3D GetPosition (void);
+  void SetRelayId(uint32_t id);
+  uint32_t GetRelayId (void);
+  void SetResourceRate (double rate);
+  double GetResourceRate (void);
 
 private:
+  uint32_t m_id;
   NodeType m_type;
   double m_psr;
   Vector3D m_position;
+  uint32_t m_relayId;
+  double m_resourceRate;
 };
 
 /**
@@ -104,13 +116,13 @@ public:
   void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
 
   void ReceivePacket (Ptr <Socket> socket);
-  void InstallApplications ();
+  void InstallApplications (NetDeviceContainer src, NetDeviceContainer dst);
 
   std::map<Ptr<NetDevice>, uint64_t> GetPacketsTotal ();
 
   NodeContainer GetNodes (NodeSpec::NodeType type) const;
+  NetDeviceContainer GetNetDevices (NodeSpec::NodeType type) const;
 
-  void FixRouting (NodeContainer nodes);
 private:
   Ptr<SpectrumChannel> m_channel; // SpectrumChannel used across the whole simulation
   NetDeviceContainer m_apDevice;
@@ -127,6 +139,22 @@ private:
 
 
 
+};
+
+class EfiTopologyReader : public TopologyReader
+{
+public:
+  static TypeId GetTypeId (void);
+  EfiTopologyReader ();
+  virtual ~EfiTopologyReader ();
+  virtual NodeContainer Read (void);
+  std::vector<NodeSpec> ReadNodeSpec (void);
+
+private:
+  EfiTopologyReader (const EfiTopologyReader&);
+  EfiTopologyReader& operator= (const EfiTopologyReader&);
+
+  std::vector<NodeSpec> m_nodeSpecs;
 };
 }
 #endif /* SCRATCH_WIFI_SURVIVE_H_ */
