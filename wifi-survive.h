@@ -98,24 +98,20 @@ public:
 
   void CreateNodes (std::vector<NodeSpec> nodes);
 
-  /*
-   * Creates the relay (always at index 0) ,
-   * and the clients connected to this relay (forming the cluster)
-   * and setup up addresses and networking stacks
-   */
-  NetDeviceContainer CreateCluster ();
+//  /*
+//   * Creates the relay (always at index 0) ,
+//   * and the clients connected to this relay (forming the cluster)
+//   * and setup up addresses and networking stacks
+//   */
+//  NetDeviceContainer CreateCluster ();
+//
+//  /*
+//   * Creates the Master Access Point to which the Relay should connect
+//   * and setup up its addresses and networking stacks, and connect the relay
+//   */
+//  NetDeviceContainer CreateMasterAp();
+//  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
 
-  /*
-   * Creates the Master Access Point to which the Relay should connect
-   * and setup up its addresses and networking stacks, and connect the relay
-   */
-
-  NetDeviceContainer CreateMasterAp();
-
-
-  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
-
-  void ReceivePacket (Ptr <Socket> socket);
   void InstallApplications (NetDeviceContainer src, NetDeviceContainer dst);
 
   std::map<Ptr<NetDevice>, uint64_t> GetPacketsTotal ();
@@ -123,20 +119,29 @@ public:
   NodeContainer GetNodes (NodeSpec::NodeType type) const;
   NetDeviceContainer GetNetDevices (NodeSpec::NodeType type) const;
 
+
 private:
+  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId);
+  void SetupReceivePacket (Ptr<NetDevice> device);
+  void ReceivePacket (Ptr <Socket> socket);
+
   Ptr<SpectrumChannel> m_channel; // SpectrumChannel used across the whole simulation
   NetDeviceContainer m_apDevice;
-  NetDeviceContainer m_clusterDevices;
+  std::map<uint32_t, NetDeviceContainer> m_clusterDevices;
   NetDeviceContainer m_relayClusterDevice;
   NetDeviceContainer m_relayToApDevice;
 
-  NodeContainer m_apNode;
-  NodeContainer m_relayNode;
-  NodeContainer m_clusterNodes;
+  NodeContainer m_allNodes;
+  NodeContainer m_apNodes;
+  std::map<uint32_t, NodeContainer> m_relayNodes;
+  std::map<uint32_t, NodeContainer> m_clusterNodes;
 
   std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
   std::map<uint32_t, double> m_nodePsrValues;
 
+
+  std::map<uint32_t, Ipv4AddressHelper> m_relayApIpAddress;
+  std::map<uint32_t, Ipv4AddressHelper> m_clusterIpAddress;
 
 
 };

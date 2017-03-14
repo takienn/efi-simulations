@@ -246,6 +246,30 @@ Vector3D NodeSpec::GetPosition (void)
   return m_position;
 }
 
+void
+NodeSpec::SetRelayId(uint32_t id)
+{
+	m_relayId = id;
+}
+
+uint32_t
+NodeSpec::GetRelayId (void)
+{
+	return m_relayId;
+}
+
+void
+NodeSpec::SetResourceRate (double rate)
+{
+	m_resourceRate = rate;
+}
+
+double
+NodeSpec::GetResourceRate (void)
+{
+	return m_resourceRate;
+}
+
 Experiment::Experiment ()
 {
 
@@ -263,6 +287,178 @@ LogAssoc (Mac48Address addr)
 }
 
 void
+Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId)
+{
+	  WifiHelper wifiHelper;
+	  wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
+	  //TODO Should the FragmentationThreshold be set here or not down for the client nodes?
+	  wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager", "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+
+	  SpectrumWifiPhyHelper wifiPhyHelper;
+	  wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
+//	  wifiPhyHelper.Set ("RxGain", DoubleValue (0.0));
+//	  wifiPhyHelper.Set ("RxNoiseFigure", DoubleValue (0.0));
+//	  wifiPhyHelper.Set ("EnergyDetectionThreshold", DoubleValue (-110.0));
+//	  wifiPhyHelper.Set ("CcaMode1Threshold", DoubleValue (-110.0));
+	  wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel", "rate", DoubleValue(psr));
+	  wifiPhyHelper.SetChannel (m_channel);
+	  WifiMacHelper macHelper;
+
+
+	  InternetStackHelper internet;
+	  OlsrHelper olsr;
+	  Ipv4StaticRoutingHelper staticRouting;
+	  Ipv4ListRoutingHelper list;
+	  list.Add (staticRouting, 0);
+	  list.Add (olsr, 10);
+	  internet.SetRoutingHelper (list);
+
+	  internet.Install(node);
+
+	  switch(type)
+	  {
+	  case NodeSpec::RELAY:
+	  {
+		  wifiPhyHelper.Set ("ChannelNumber", UintegerValue(44));
+		  // Setting a the Relay as an access point to it's clulser's stations.
+		  std::stringstream ss;
+		  Ssid ssid;
+		  ss << "RelayAP" << node->GetId();
+		  ssid = Ssid (ss.str());
+
+		  macHelper.SetType ("ns3::ApWifiMac",
+		                 "Ssid", SsidValue (ssid));
+
+		  NetDeviceContainer device = wifiHelper.Install (wifiPhyHelper, macHelper, node);
+		  m_relayClusterDevice.Add(device);
+
+
+		    if(m_relayApIpAddress.count(node->GetId()) == 0)
+		    {
+		    	ss.str("");
+		    	ss << "10.0." << node->GetId() << ".0";
+		    	Ipv4AddressHelper addressHelper;
+
+		    	addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+		    	addressHelper.Assign(device);
+		    	m_clusterIpAddress[node->GetId()] = addressHelper;
+		    }
+		    else
+		    {
+		    	m_clusterIpAddress[node->GetId()].Assign(device);
+		    }
+
+		  SetupReceivePacket(device.Get(0));
+
+
+		  wifiPhyHelper.Set ("ChannelNumber", UintegerValue(48));
+		   ss.str("");
+		   ss << "MasterAP" << relayId;
+		   ssid = Ssid (ss.str());
+
+		   macHelper.SetType ("ns3::StaWifiMac",
+		   		                 "Ssid", SsidValue (ssid),
+								 "BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
+		    device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
+
+		    m_relayToApDevice.Add(device);
+
+
+		   if(m_relayApIpAddress.count(relayId) == 0)
+		   {
+			   ss.str("");
+			   ss << "10.0." << relayId << ".0";
+			   Ipv4AddressHelper addressHelper;
+
+			   addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+			   addressHelper.Assign(device);
+			   m_relayApIpAddress[relayId] = addressHelper;
+		   }
+		   else
+		   {
+			   m_relayApIpAddress[relayId].Assign(device);
+		   }
+
+		   SetupReceivePacket(device.Get(0));
+
+		  break;
+	  }
+	  case NodeSpec::AP:
+	  {
+		  wifiPhyHelper.Set ("ChannelNumber", UintegerValue(48));
+		  std::stringstream ss;
+		  Ssid ssid;
+		  ss << "MasterAP" << node->GetId();
+		  ssid = Ssid (ss.str());
+
+		  macHelper.SetType ("ns3::ApWifiMac",
+		                 "Ssid", SsidValue (ssid));
+		  NetDeviceContainer device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
+		  m_apDevice.Add(device);
+
+//		  internet.Install(node);
+
+		  if(m_relayApIpAddress.count(node->GetId()) == 0)
+		  {
+			  ss.str("");
+			  ss << "10.0." << node->GetId() << ".0";
+			  Ipv4AddressHelper addressHelper;
+
+			  addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+			  addressHelper.Assign(device);
+			  m_relayApIpAddress[node->GetId()] = addressHelper;
+		  }
+		  else
+		  {
+			  m_relayApIpAddress[node->GetId()].Assign(device);
+		  }
+
+		  SetupReceivePacket(device.Get(0));
+
+		  break;
+	  }
+	  case NodeSpec::STA:
+	  {
+
+		  // Setting a the Relay as an access point to it's clulser's stations.
+		  std::stringstream ss;
+		  Ssid ssid;
+		  ss << "RelayAP" << relayId;
+		  ssid = Ssid (ss.str());
+
+		   macHelper.SetType ("ns3::StaWifiMac",
+		   		                 "Ssid", SsidValue (ssid),
+								 "BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
+		   NetDeviceContainer device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
+		   m_clusterDevices[relayId].Add(device);
+
+//		   internet.Install(node);
+
+		   if(m_clusterIpAddress.count(relayId) == 0)
+		   {
+			   ss.str("");
+			   ss << "10.0." << relayId << ".0";
+			   Ipv4AddressHelper addressHelper;
+
+			   addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+			   addressHelper.Assign(device);
+			   m_clusterIpAddress[relayId] = addressHelper;
+		   }
+		   else
+		   {
+			   m_clusterIpAddress[relayId].Assign(device);
+		   }
+
+		   SetupReceivePacket(device.Get(0));
+
+		  break;
+	  }
+	  default: break;
+	  }
+
+}
+
+void
 Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs)
 {
   for(uint32_t i = 0; i != nodeSpecs.size(); i++)
@@ -273,99 +469,46 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs)
       node->AggregateObject(mobility);
       m_nodePsrValues[node->GetId()] = nodeSpecs[i].GetPsr();
 
+      m_allNodes.Add(node);
       if(nodeSpecs[i].GetType()==NodeSpec::RELAY)
-	m_relayNode.Add(node);
-      if(nodeSpecs[i].GetType()==NodeSpec::STA)
-	m_clusterNodes.Add(node);
-      if(nodeSpecs[i].GetType()==NodeSpec::AP)
-	m_apNode.Add(node);
+      {
+    	  m_relayNodes[nodeSpecs[i].GetRelayId()].Add(node);
+    	  SetupNode(node, NodeSpec::RELAY, nodeSpecs[i].GetPsr(), nodeSpecs[i].GetRelayId());
+      }
+      else if(nodeSpecs[i].GetType()==NodeSpec::STA)
+      {
+    	  m_clusterNodes[nodeSpecs[i].GetRelayId()].Add(node);
+    	  SetupNode(node, NodeSpec::STA, nodeSpecs[i].GetPsr(), nodeSpecs[i].GetRelayId());
+
+      }
+      else if(nodeSpecs[i].GetType()==NodeSpec::AP)
+      {
+    	  m_apNodes.Add(node);
+    	  SetupNode(node, NodeSpec::AP, nodeSpecs[i].GetPsr(), nodeSpecs[i].GetRelayId());
+      }
     }
+
+  m_clusterIpAddress.clear();
+  m_relayApIpAddress.clear();
+  m_nodePsrValues.clear();
 }
-//Generate a connected cluster based on the Nodes descriptions, cluster[0] is always the group owner
-NetDeviceContainer
-Experiment::CreateCluster ()
+
+void
+Experiment::SetupReceivePacket (Ptr<NetDevice> device)
 {
+	TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+	Ptr<Ipv4L3Protocol> ipv4 = device->GetNode()->GetObject<Ipv4L3Protocol> ();
+	Ipv4InterfaceAddress addr = ipv4->GetInterface(ipv4->GetInterfaceForDevice(device))->GetAddress(0);
 
-  WifiHelper wifiHelper;
-  wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
-  //TODO Should the FragmentationThreshold be set here or not down for the client nodes?
-  wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager", "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+	InetSocketAddress local = InetSocketAddress (addr.GetLocal(), port);
 
-  SpectrumWifiPhyHelper wifiPhyHelper;
-  wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
-//  wifiPhyHelper.Set ("RxGain", DoubleValue (0.0));
-//  wifiPhyHelper.Set ("RxNoiseFigure", DoubleValue (0.0));
-//  wifiPhyHelper.Set ("EnergyDetectionThreshold", DoubleValue (-110.0));
-//  wifiPhyHelper.Set ("CcaMode1Threshold", DoubleValue (-110.0));
-  wifiPhyHelper.Set ("ChannelNumber", UintegerValue(44));
-  wifiPhyHelper.SetChannel (m_channel);
+	Ptr <Socket> sink = Socket::CreateSocket (device->GetNode(), tid);
 
-  WifiMacHelper macHelper;
+	sink->Bind (local);
+	sink->BindToNetDevice(device);
+	sink->SetRecvCallback (MakeCallback ( &Experiment::ReceivePacket, this));
 
-  // Setting a the Relay as an access point to it's clulser's stations.
-  std::stringstream ss;
-  Ssid ssid;
-  ss << "RelayAP" << m_relayNode.Get(0)->GetId();
-  ssid = Ssid (ss.str());
-
-  macHelper.SetType ("ns3::ApWifiMac",
-                 "Ssid", SsidValue (ssid));
-
-  wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel",
-  				      "rate", DoubleValue(1.0 - m_nodePsrValues[m_relayNode.Get(0)->GetId()]));
-  NetDeviceContainer relayDevice = wifiHelper.Install (wifiPhyHelper, macHelper, m_relayNode.Get(0));
-  m_relayClusterDevice.Add(relayDevice);
-  m_packetsTotal[relayDevice.Get(0)] = 0;
-
-  macHelper.SetType ("ns3::StaWifiMac",
-		 "Ssid", SsidValue (ssid),
-		 "BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
-
-  for (uint32_t i =0; i < m_clusterNodes.GetN(); i++)
-    {
-      wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel",
-				      "rate", DoubleValue(1.0 - m_nodePsrValues[m_clusterNodes.Get(i)->GetId()]));
-      NetDeviceContainer staDevice = wifiHelper.Install (wifiPhyHelper, macHelper, m_clusterNodes.Get(i));
-      m_clusterDevices.Add(staDevice);
-//      staDevice.Get(0)->GetObject<WifiNetDevice>()->GetMac()->TraceConnectWithoutContext ("Assoc", MakeCallback(&LogAssoc));
-
-      m_packetsTotal[staDevice.Get(0)] = 0;
-    }
-
-  InternetStackHelper internet;
-  OlsrHelper olsr;
-  Ipv4StaticRoutingHelper staticRouting;
-  Ipv4ListRoutingHelper list;
-  list.Add (staticRouting, 0);
-  list.Add (olsr, 10);
-  internet.SetRoutingHelper (list);
-
-  internet.Install(m_relayNode);
-  internet.Install(m_clusterNodes);
-
-  Ipv4AddressHelper addressHelper;
-  addressHelper.SetBase(Ipv4Address("10.0.1.0"), Ipv4Mask("255.255.255.0"));
-  Ipv4InterfaceContainer relayInterface = addressHelper.Assign (m_relayClusterDevice);
-  Ipv4InterfaceContainer clusterInterfaces = addressHelper.Assign (m_clusterDevices);
-
-
-  NetDeviceContainer allDevices = NetDeviceContainer (m_relayClusterDevice, m_clusterDevices);
-  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-  for(uint32_t i = 0; i < allDevices.GetN(); i++)
-    {
-      Ptr<Ipv4L3Protocol> ipv4 = allDevices.Get(i)->GetNode()->GetObject<Ipv4L3Protocol> ();
-      Ipv4InterfaceAddress addr = ipv4->GetInterface(ipv4->GetInterfaceForDevice(allDevices.Get(i)))->GetAddress(0);
-
-      InetSocketAddress local = InetSocketAddress (addr.GetLocal(), port);
-
-      Ptr <Socket> sink = Socket::CreateSocket (allDevices.Get(i)->GetNode(), tid);
-
-      sink->Bind (local);
-      sink->BindToNetDevice(allDevices.Get(i));
-      sink->SetRecvCallback (MakeCallback ( &Experiment::ReceivePacket, this));
-    }
-
-  return m_clusterDevices;
+	m_packetsTotal[device] = 0;
 }
 
 void LogBusy (Time start, Time duration, WifiPhy::State state)
@@ -399,85 +542,6 @@ void LogBusy (Time start, Time duration, WifiPhy::State state)
 }
 
 /**
- * Create the Master AP to which the Relays will connect,
- * to forward traffic from clusters clients, and setup its
- * addressing and networking stacks
- */
-NetDeviceContainer
-Experiment::CreateMasterAp()
-{
-
-  WifiHelper wifiHelper;
-  wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
-//  TODO Should the FragmentationThreshold be set here or not down for the client nodes?
-  wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager");//, "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
-
-  SpectrumWifiPhyHelper wifiPhyHelper;
-  wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
-  wifiPhyHelper.SetChannel(m_channel);
-  wifiPhyHelper.Set("ChannelNumber", UintegerValue(0));
-
-
-  wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel",
-  				      "rate", DoubleValue(1.0 - m_nodePsrValues[m_apNode.Get(0)->GetId()]));
-  Ssid ssid = Ssid("MasterAP");
-  WifiMacHelper macHelper;
-  macHelper.SetType ("ns3::ApWifiMac",
-                 "Ssid", SsidValue (ssid));
-  m_apDevice = wifiHelper.Install(wifiPhyHelper, macHelper, m_apNode);
-  m_packetsTotal[m_apDevice.Get(0)] = 0;
-
-  wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel",
-  				      "rate", DoubleValue(1.0 - m_nodePsrValues[m_relayNode.Get(0)->GetId()]));
-  macHelper.SetType ("ns3::StaWifiMac",
-                 "Ssid", SsidValue (ssid));
-  m_relayToApDevice = wifiHelper.Install(wifiPhyHelper, macHelper, m_relayNode);
-  m_packetsTotal[m_relayToApDevice.Get(0)] = 0;
-
-  m_relayToApDevice.Get(0)->GetObject<WifiNetDevice>()->GetMac()->TraceConnectWithoutContext ("Assoc", MakeCallback(&LogAssoc));
-
-//  std::stringstream sstream;
-//  sstream << "/NodeList/" << m_relayNode.Get(0)->GetId() << "/DeviceList/2/$ns3::WifiNetDevice/Phy/State/State";
-//  Config::ConnectWithoutContext (sstream.str(), MakeCallback(&LogBusy));
-//  Config::MatchContainer container = Config::LookupMatches(sstream.str());
-//  std::cout << container.GetN()<<std::endl;
-
-  InternetStackHelper internet;
-  OlsrHelper olsr;
-  Ipv4StaticRoutingHelper staticRouting;
-
-  Ipv4ListRoutingHelper list;
-  list.Add (staticRouting, 0);
-  list.Add (olsr, 10);
-  internet.SetRoutingHelper (list);
-
-  internet.Install(m_apNode);
-//  internet.Install(m_relayNode);
-
-  Ipv4AddressHelper addressHelper;
-  addressHelper.SetBase("10.0.2.0", "255.255.255.0");
-  addressHelper.Assign (m_relayToApDevice);
-  addressHelper.Assign (m_apDevice);
-
-  NetDeviceContainer allDevices = NetDeviceContainer(m_relayToApDevice, m_apDevice);
-  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
-  for(uint32_t i = 0; i < allDevices.GetN(); i++)
-    {
-      Ptr<Ipv4L3Protocol> ipv4 = allDevices.Get(i)->GetNode()->GetObject<Ipv4L3Protocol> ();
-      Ipv4InterfaceAddress addr = ipv4->GetInterface(ipv4->GetInterfaceForDevice(allDevices.Get(i)))->GetAddress(0);
-
-      InetSocketAddress local = InetSocketAddress (addr.GetLocal(), port);
-
-      Ptr <Socket> sink = Socket::CreateSocket (allDevices.Get(i)->GetNode(), tid);
-
-      sink->Bind (local);
-      sink->BindToNetDevice(allDevices.Get(i));
-      sink->SetRecvCallback (MakeCallback ( &Experiment::ReceivePacket, this));
-    }
-  return m_apDevice;
-}
-
-/**
  * Connect a cluster Group Owner (Relay) to AP
  * TODO: Note here that WifiPhy uses the default NistErrorRateModel,
  * This should be checked if it fits the scenario.
@@ -505,8 +569,8 @@ Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
 {
 
   NodeContainer allNodes;
-  allNodes.Add(m_apNode);
-  allNodes.Add(m_clusterNodes);
+  allNodes.Add(m_apNodes);
+//  allNodes.Add(m_clusterNodes);
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
 
@@ -522,7 +586,7 @@ Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
   onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
   ApplicationContainer apps;
 
-  onoff.Install(m_clusterNodes.Get(0));
+//  onoff.Install(m_clusterNodes.Get(0));
 
 //  apps.Add(onoff.Install (m_apNode));
 //  for(uint32_t i = 0; i< allNodes.GetN(); i++)
@@ -552,19 +616,20 @@ void Experiment::Initialize ()
 
 }
 
+//TODO fix return variables
 NodeContainer Experiment::GetNodes(NodeSpec::NodeType type) const
 {
   NodeContainer nodes;
   switch(type)
   {
     case NodeSpec::STA:
-      nodes = m_clusterNodes;
+//      nodes = m_clusterNodes;
       break;
     case NodeSpec::AP:
-      nodes = m_apNode;
+//      nodes = m_apNodes;
       break;
     case NodeSpec::RELAY:
-      nodes = m_relayNode;
+//      nodes = m_relayNodes;
       break;
     default:
       std::cout << "Wrong NodeType provided" << std::endl;
@@ -578,13 +643,13 @@ NetDeviceContainer Experiment::GetNetDevices(NodeSpec::NodeType type) const
   switch(type)
   {
     case NodeSpec::STA:
-      devices = m_clusterDevices;
+//      devices = m_clusterDevices;
       break;
     case NodeSpec::AP:
-      devices = m_apDevice;
+//      devices = m_apDevice;
       break;
     case NodeSpec::RELAY:
-      devices = NetDeviceContainer(m_relayClusterDevice, m_relayToApDevice);
+//      devices = NetDeviceContainer(m_relayClusterDevice, m_relayToApDevice);
       break;
     default:
       std::cout << "Wrong NodeType provided" << std::endl;
@@ -615,44 +680,27 @@ int main (int argc, char *argv[])
   experiment.Initialize();
 
   EfiTopologyReader topoReader;
-  topoReader.SetFileName("/opt/workspace/ns-3-dev/scratch/efi-topo.txt");
+  topoReader.SetFileName("scratch/NS3Input.txt");
 
   std::vector<NodeSpec> nodes = topoReader.ReadNodeSpec();
 
-//  NodeSpec ns1;
-//  ns1.SetPosition(Vector3D(20,20,0));
-//  ns1.SetPsr(1.0);
-//  ns1.SetType(NodeSpec::RELAY);
-//
-//  NodeSpec ns2;
-//  ns2.SetPosition(Vector3D(40,20,0));
-//  ns2.SetPsr(1.0);
-//  ns2.SetType(NodeSpec::STA);
-//
-//  nodes.push_back(ns1);
-//  nodes.push_back(ns2);
-//
-//  NodeSpec ap;
-//  ap.SetPosition(Vector3D(0,0,0));
-//  ap.SetPsr(0.5); //TODO Should be ignored ?
-//  ap.SetType(NodeSpec::AP);
-//
-//  nodes.push_back(ap);
 
   experiment.CreateNodes(nodes);
-  NetDeviceContainer clusterDevices = experiment.CreateCluster();
 
-  //we change channel number here, it has to be this order
-  NetDeviceContainer apDevice = experiment.CreateMasterAp();
-
-  experiment.InstallApplications(NetDeviceContainer(experiment.GetNetDevices(NodeSpec::STA).Get(0)),
-				 NetDeviceContainer(experiment.GetNetDevices(NodeSpec::AP).Get(0)));
-
-
+//  NetDeviceContainer clusterDevices = experiment.CreateCluster();
+//
+//  we change channel number here, it has to be this order
+//  NetDeviceContainer apDevice = experiment.CreateMasterAp();
+//
+//  experiment.InstallApplications(NetDeviceContainer(experiment.GetNetDevices(NodeSpec::STA).Get(0)),
+//				 NetDeviceContainer(experiment.GetNetDevices(NodeSpec::AP).Get(0)));
+//
+//
 //  Ptr<OutputStreamWrapper> stream = Create<OutputStreamWrapper> (&std::cout);
 //  Ipv4RoutingHelper::PrintRoutingTableAt (Seconds(20), clusterDevices.Get(0)->GetNode(), stream, Time::Unit::S);
 //  GtkConfigStore config;
 //  config.ConfigureAttributes();
+
   Simulator::Stop(Seconds(simTime));
 
   AnimationInterface anim (animFile.c_str());
