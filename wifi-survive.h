@@ -22,20 +22,21 @@ public:
   {
     AP = 0,
     RELAY = 1,
-    STA = 2
+    STA = 2,
+	STA_NORMAL = 3
   };
 
   NodeSpec ();
-  NodeSpec (uint32_t id, NodeType type, double psr, Vector2D position, uint32_t relayId, double resourceRate);
-  NodeSpec (uint32_t id, NodeType type, double psr, Vector3D position, uint32_t relayId, double resourceRate);
+  NodeSpec (uint32_t id, NodeType type, Vector2D position, uint32_t relayId, double oPsr = 1, double rPsr = 1, double nPsr = 1, double resourceRate = 0);
+  NodeSpec (uint32_t id, NodeType type, Vector3D position, uint32_t relayId, double oPsr = 1, double rPsr = 1, double nPsr = 1, double resourceRate = 0);
   virtual ~NodeSpec ();
 
   void SetId (uint32_t id);
   uint32_t GetId (void);
   void SetType (NodeType type);
   NodeType GetType (void);
-  void SetPsr (double psr);
-  double GetPsr (void);
+  void SetPsr (double psr, uint8_t psrType = 0); // Old Psr = 0, relay Par = 1, New Psr = 1
+  double GetPsr (uint8_t psrType = 0);
   void SetPosition (Vector3D position);
   Vector3D GetPosition (void);
   void SetRelayId(uint32_t id);
@@ -43,14 +44,19 @@ public:
   void SetResourceRate (double rate);
   double GetResourceRate (void);
 
+  void Print (std::ostream &os) const;
+
 private:
   uint32_t m_id;
   NodeType m_type;
-  double m_psr;
+  double m_oPsr;
+  double m_rPsr;
+  double m_nPsr;
   Vector3D m_position;
   uint32_t m_relayId;
   double m_resourceRate;
 };
+
 
 /**
  *
@@ -94,9 +100,8 @@ class Experiment
 public:
   Experiment ();
   virtual ~Experiment ();
-  void Initialize ();
 
-  void CreateNodes (std::vector<NodeSpec> nodes);
+  void CreateNodes (std::vector<NodeSpec> nodes, bool efiActive = true);
 
 //  /*
 //   * Creates the relay (always at index 0) ,
@@ -119,9 +124,11 @@ public:
   NodeContainer GetNodes (NodeSpec::NodeType type) const;
   NetDeviceContainer GetNetDevices (NodeSpec::NodeType type) const;
 
+  void Run(int argc, char *argv[]);
 
 private:
-  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId);
+  void Initialize ();
+  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId, bool efiActive = true);
   void SetupReceivePacket (Ptr<NetDevice> device);
   void ReceivePacket (Ptr <Socket> socket);
 
@@ -153,13 +160,19 @@ public:
   EfiTopologyReader ();
   virtual ~EfiTopologyReader ();
   virtual NodeContainer Read (void);
-  std::vector<NodeSpec> ReadNodeSpec (void);
+  std::vector<std::vector<NodeSpec> > ReadNodeSpec (void);
 
 private:
   EfiTopologyReader (const EfiTopologyReader&);
   EfiTopologyReader& operator= (const EfiTopologyReader&);
 
+  std::vector<NodeSpec> ParseNodes(std::istringstream lineBuffer);
+  void ParseResources(std::istringstream lineBuffer);
+
   std::vector<NodeSpec> m_nodeSpecs;
 };
+
+std::ostream& operator<< (std::ostream& os, NodeSpec const& nodeSpec);
+
 }
 #endif /* SCRATCH_WIFI_SURVIVE_H_ */
