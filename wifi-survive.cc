@@ -258,8 +258,8 @@ EfiTopologyReader::ReadNodeSpec (void)
 		return nodeSpecsList;
 	}
 
-	std::istringstream lineBuffer1;
-	std::istringstream lineBuffer2;
+	std::istringstream lineBuffer1; // First line for Node parameters
+	std::istringstream lineBuffer2; // Seconds line for Resources Allocation parameters
 
 	std::string line1;
 	std::string line2;
@@ -361,7 +361,7 @@ EfiTopologyReader::~EfiTopologyReader()
 
 Experiment::Experiment ()
 {
-
+	Initialize();
 }
 
 Experiment::~Experiment()
@@ -616,7 +616,6 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 void
 Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 {
-	Initialize();
 
 	for(uint32_t i = 0; i != nodeSpecs.size(); i++)
 	{
@@ -884,7 +883,6 @@ int main (int argc, char *argv[])
 	CommandLine cmd;
 	cmd.AddValue("efiActive", "normal or Efi mode", efiActive);
 	Experiment experiment;
-	experiment.Initialize();
 
 	EfiTopologyReader topoReader;
 	topoReader.SetFileName("scratch/NS3Input.txt");
@@ -896,6 +894,7 @@ int main (int argc, char *argv[])
 		Experiment experiment;
 		experiment.CreateNodes(*it, efiActive);
 		experiment.Run(argc, argv);
+		break;
 	}
 
 	//	  NetDeviceContainer clusterDevices = experiment.CreateCluster();
