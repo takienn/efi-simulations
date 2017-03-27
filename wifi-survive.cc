@@ -623,7 +623,6 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel> ();
 		mobility->SetPosition(nodeSpecs[i].GetPosition());
 		node->AggregateObject(mobility);
-		m_nodePsrValues[node->GetId()] = nodeSpecs[i].GetPsr();
 
 		m_allNodes.Add(node);
 		if(nodeSpecs[i].GetType()==NodeSpec::RELAY)
@@ -649,9 +648,16 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		}
 	}
 
+	for(std::map<uint32_t, NetDeviceContainer>::iterator it = m_clusterDevices.begin(); it != m_clusterDevices.end(); it++)
+	{
+		std::stringstream ss;
+		ss.str("");
+		ss << "10.0." << it->first << ".2";
+	    InstallApplications(m_apDevice, Ipv4Address(ss.str().c_str()));
+	}
+
 	m_clusterIpAddress.clear();
 	m_relayApIpAddress.clear();
-	m_nodePsrValues.clear();
 }
 
 void
@@ -725,42 +731,66 @@ Experiment::ReceivePacket (Ptr <Socket> socket)
 	}
 }
 
+//TODO This install an app sending traffic from every netdevice in src to every netdevice in dst
 void
 Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
 {
 
-	NodeContainer allNodes;
-	allNodes.Add(m_apNodes);
-	//  allNodes.Add(m_clusterNodes);
-
 	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-
-	Ptr<Ipv4L3Protocol> ipv4_dst = dst.Get(0)->GetNode()->GetObject<Ipv4L3Protocol> ();
-	Ipv4InterfaceAddress addr_dst = ipv4_dst->GetInterface(ipv4_dst->GetInterfaceForDevice(dst.Get(0)))->GetAddress(0);
-
-	Ptr<Ipv4L3Protocol> ipv4_src = src.Get(0)->GetNode()->GetObject<Ipv4L3Protocol> ();
-	Ipv4InterfaceAddress addr_src = ipv4_src->GetInterface(ipv4_src->GetInterfaceForDevice(src.Get(0)))->GetAddress(0);
-
-	OnOffHelper onoff ("ns3::UdpSocketFactory",
-			Address (InetSocketAddress (addr_dst.GetLocal(), port))); // TODO Send traffic to AP?
-	onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
-	onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 	ApplicationContainer apps;
 
-	//  onoff.Install(m_clusterNodes.Get(0));
+	for(NetDeviceContainer::Iterator it1 = src.Begin(); it1 != src.End(); it1++)
+	{
+	    for(NetDeviceContainer::Iterator it2 = dst.Begin(); it2 != dst.End(); it2++)
+	      {
+		Ptr<Ipv4L3Protocol> ipv4_dst = (*it2)->GetNode()->GetObject<Ipv4L3Protocol> ();
+		Ipv4InterfaceAddress addr_dst = ipv4_dst->GetInterface(ipv4_dst->GetInterfaceForDevice(*it2))->GetAddress(0);
 
-	//  apps.Add(onoff.Install (m_apNode));
-	//  for(uint32_t i = 0; i< allNodes.GetN(); i++)
-	//    {
-	////      if(i<2) continue;
-	//      apps.Add(onoff.Install (allNodes.Get (i)));
-	//    }
+		Ptr<Ipv4L3Protocol> ipv4_src = (*it1)->GetNode()->GetObject<Ipv4L3Protocol> ();
+		Ipv4InterfaceAddress addr_src = ipv4_src->GetInterface(ipv4_src->GetInterfaceForDevice(*it1))->GetAddress(0);
+
+		OnOffHelper onoff ("ns3::UdpSocketFactory",
+				Address (InetSocketAddress (addr_dst.GetLocal(), port))); // TODO Send traffic to AP?
+		onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+		onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+
+		apps.Add(onoff.Install((*it1)->GetNode()));
+
+		std::cout << "address " << addr_src.GetLocal() << " sending packets to address " << addr_dst.GetLocal() << std::endl;
+
+	      }
+	}
 
 	apps.Start (Seconds (15));
 	apps.Stop (Seconds (100));
+}
 
-	std::cout << "address " << addr_src.GetLocal() << " sending packets to address " << addr_dst.GetLocal() << std::endl;
+void
+Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address)
+{
 
+	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
+	ApplicationContainer apps;
+
+	for(NetDeviceContainer::Iterator it1 = src.Begin(); it1 != src.End(); it1++)
+	  {
+
+	    Ptr<Ipv4L3Protocol> ipv4_src = (*it1)->GetNode()->GetObject<Ipv4L3Protocol> ();
+	    Ipv4InterfaceAddress addr_src = ipv4_src->GetInterface(ipv4_src->GetInterfaceForDevice(*it1))->GetAddress(0);
+
+	    OnOffHelper onoff ("ns3::UdpSocketFactory",
+			       Address (InetSocketAddress (address, port))); // TODO Send traffic to AP?
+	    onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
+	    onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
+
+	    apps.Add(onoff.Install((*it1)->GetNode()));
+
+	    std::cout << "address " << addr_src.GetLocal() << " sending packets to address " << address << std::endl;
+
+	  }
+
+	apps.Start (Seconds (15));
+	apps.Stop (Seconds (100));
 }
 
 void Experiment::Initialize ()
@@ -780,42 +810,46 @@ void Experiment::Initialize ()
 //TODO fix return variables
 NodeContainer Experiment::GetNodes(NodeSpec::NodeType type) const
 {
-	NodeContainer nodes;
-	switch(type)
-	{
-	case NodeSpec::STA:
-		//      nodes = m_clusterNodes;
-		break;
-	case NodeSpec::AP:
-		//      nodes = m_apNodes;
-		break;
-	case NodeSpec::RELAY:
-		//      nodes = m_relayNodes;
-		break;
-	default:
-		std::cout << "Wrong NodeType provided" << std::endl;
-	}
-	return nodes;
+  NodeContainer nodes;
+  switch(type)
+  {
+    case NodeSpec::STA:
+      //      nodes = m_clusterNodes;
+      break;
+    case NodeSpec::STA_NORMAL:
+      break;
+    case NodeSpec::AP:
+      //      nodes = m_apNodes;
+      break;
+    case NodeSpec::RELAY:
+      //      nodes = m_relayNodes;
+      break;
+    default:
+      std::cout << "Wrong NodeType provided" << std::endl;
+  }
+  return nodes;
 }
 
 NetDeviceContainer Experiment::GetNetDevices(NodeSpec::NodeType type) const
 {
-	NetDeviceContainer devices;
-	switch(type)
-	{
-	case NodeSpec::STA:
-		//      devices = m_clusterDevices;
-		break;
-	case NodeSpec::AP:
-		//      devices = m_apDevice;
-		break;
-	case NodeSpec::RELAY:
-		//      devices = NetDeviceContainer(m_relayClusterDevice, m_relayToApDevice);
-		break;
-	default:
-		std::cout << "Wrong NodeType provided" << std::endl;
-	}
-	return devices;
+  NetDeviceContainer devices;
+  switch(type)
+  {
+    case NodeSpec::STA:
+      //      devices = m_clusterDevices;
+      break;
+    case NodeSpec::STA_NORMAL:
+      break;
+    case NodeSpec::AP:
+      //      devices = m_apDevice;
+      break;
+    case NodeSpec::RELAY:
+      //      devices = NetDeviceContainer(m_relayClusterDevice, m_relayToApDevice);
+      break;
+    default:
+      std::cout << "Wrong NodeType provided" << std::endl;
+  }
+  return devices;
 }
 
 std::map<Ptr<NetDevice>, uint64_t> Experiment::GetPacketsTotal ()
@@ -890,12 +924,14 @@ int main (int argc, char *argv[])
 	std::vector<std::vector<NodeSpec> > nodesList = topoReader.ReadNodeSpec();
 
 	for(std::vector<std::vector<NodeSpec> >::iterator it = nodesList.begin(); it != nodesList.end(); it++)
-	{
-		Experiment experiment;
-		experiment.CreateNodes(*it, efiActive);
-		experiment.Run(argc, argv);
-		break;
-	}
+	  {
+//	    NodeSpec nodeSpec =   NodeSpec (0, NodeSpec::AP, Vector3D(0,0,0), 0);
+//	    it->push_back(nodeSpec);
+	    Experiment experiment;
+	    experiment.CreateNodes(*it, efiActive);
+	    experiment.Run(argc, argv);
+	    break;
+	  }
 
 	//	  NetDeviceContainer clusterDevices = experiment.CreateCluster();
 	//

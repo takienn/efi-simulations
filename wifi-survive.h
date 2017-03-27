@@ -23,7 +23,7 @@ public:
     AP = 0,
     RELAY = 1,
     STA = 2,
-	STA_NORMAL = 3
+    STA_NORMAL = 3
   };
 
   NodeSpec ();
@@ -118,6 +118,7 @@ public:
 //  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
 
   void InstallApplications (NetDeviceContainer src, NetDeviceContainer dst);
+  void InstallApplications (NetDeviceContainer src, Ipv4Address address);
 
   std::map<Ptr<NetDevice>, uint64_t> GetPacketsTotal ();
 
