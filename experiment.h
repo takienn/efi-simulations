@@ -6,6 +6,7 @@
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
 #include "nodespec.h"
+#include "psr-error-model.h"
 
 #include <map>
 
@@ -36,19 +37,22 @@ public:
 //  NetDeviceContainer CreateMasterAp();
 //  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
 
-  void InstallApplications (NetDeviceContainer src, NetDeviceContainer dst);
-  void InstallApplications (NetDeviceContainer src, Ipv4Address address);
+  void InstallApplications (NetDeviceContainer src, NetDeviceContainer dst, Time start, Time stop);
+  void InstallApplications (NetDeviceContainer src, Ipv4Address address, Time start, Time stop);
 
   std::map<Ptr<NetDevice>, uint64_t> GetPacketsTotal ();
 
   NodeContainer GetNodes (NodeSpec::NodeType type) const;
   NetDeviceContainer GetNetDevices (NodeSpec::NodeType type) const;
 
+  void ClusterWakeup(uint32_t id, Time time);
+  void ClusterSleep(uint32_t id, Time time);
+
   void Run(int argc, char *argv[]);
 
 private:
   void Initialize ();
-  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId, bool efiActive = true);
+  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId, double resRate = 100, bool efiActive = true);
   void SetupReceivePacket (Ptr<NetDevice> device);
   void ReceivePacket (Ptr<Socket> socket);
 
@@ -70,7 +74,10 @@ private:
   std::map<uint32_t, Ipv4AddressHelper> m_relayApIpAddress;
   std::map<uint32_t, Ipv4AddressHelper> m_clusterIpAddress;
 
+  double m_totalResources;
+  double m_remainingResource;
 
+//  std::map<Mac48Address, Ptr<WifiNetDevice> > m_deviceAddressMap;
 };
 
 }

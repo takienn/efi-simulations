@@ -33,7 +33,7 @@ PsrErrorRateModel::GetChunkSuccessRate (WifiMode mode, WifiTxVector txVector,
 		double snr, uint32_t nbits) const
 {
 	//    return m_ranvar->GetValue () < m_rate? 0.0:1.0;
-	return (1 - m_rate); //TODO too simple, maybe needs some testing
+	return m_rate; //TODO too simple, maybe needs some testing
 }
 
 double

@@ -27,16 +27,20 @@ int main (int argc, char *argv[])
 	EfiTopologyReader topoReader;
 	topoReader.SetFileName("scratch/NS3Input.txt");
 
+
 	std::vector<std::vector<NodeSpec> > nodesList = topoReader.ReadNodeSpec();
 
 	for(std::vector<std::vector<NodeSpec> >::iterator it = nodesList.begin(); it != nodesList.end(); it++)
 	  {
 //	    NodeSpec nodeSpec =   NodeSpec (0, NodeSpec::AP, Vector3D(0,0,0), 0);
 //	    it->push_back(nodeSpec);
+
+		std::cout << "--------- Running new experiment ---------" << std::endl;
+
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
 	    experiment.Run(argc, argv);
-	    break;
+//	    break;
 	  }
 
 	return 0;

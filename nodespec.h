@@ -48,6 +48,8 @@ private:
   double m_resourceRate;
 };
 
+std::ostream& operator<< (std::ostream& os, NodeSpec const& nodeSpec);
+
 }
 
 #endif // NODESPEC_H

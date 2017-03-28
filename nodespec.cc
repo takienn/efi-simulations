@@ -41,6 +41,12 @@ NodeSpec::~NodeSpec ()
 
 }
 
+uint32_t
+NodeSpec::GetId ()
+{
+	return m_id;
+}
+
 void
 NodeSpec::SetType (NodeType type)
 {

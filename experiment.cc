@@ -1,5 +1,4 @@
 #include "experiment.h"
-#include "psr-error-model.h"
 #include "ns3/mobility-module.h"
 #include "ns3/spectrum-module.h"
 #include "ns3/applications-module.h"
@@ -8,10 +7,28 @@
 #include "ns3/olsr-module.h"
 #include "ns3/log.h"
 #include "ns3/netanim-module.h"
+#include "ns3/flow-monitor-module.h"
+
+#include <ctime>
 
 using namespace ns3;
 
 uint16_t port = 9;
+double g_simTime = 200.0;
+
+
+void
+EnableActiveProbing(Ptr<StaWifiMac> staMac)
+{
+	staMac->SetAttribute("ActiveProbing", BooleanValue(true));
+}
+
+void
+SimulationProgress()
+{
+	std::cout << Now().GetSeconds() << std::endl;
+	Simulator::Schedule(Seconds(5.0), &SimulationProgress);
+}
 
 NS_LOG_COMPONENT_DEFINE ("EfiExperiment");
 
@@ -22,22 +39,78 @@ Experiment::Experiment ()
 
 Experiment::~Experiment()
 {
-
 }
 
 void
-LogAssoc (Mac48Address addr)
+LogAssoc (Mac48Address sta, Mac48Address addr)
 {
-	std::cout << "Associated with " << addr << std::endl;
+	std::cout << sta << " Associated with " << addr << " at time " << Now().GetSeconds() << std::endl;
 }
 
 void
-Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, bool efiActive)
+LogDeAssoc (Mac48Address sta, Mac48Address addr)
+{
+	std::cout << sta << " DeAssociated with " << addr << " at time " << Now().GetSeconds() << std::endl;
+}
+
+void
+Experiment::ClusterWakeup(uint32_t id, Time time)
+{
+	for(uint32_t i = 0; i < m_relayClusterDevice.GetN(); i++)
+	{
+		if (id == m_relayClusterDevice.Get(i)->GetNode()->GetId())
+		{
+			Ptr<WifiNetDevice> device = m_relayClusterDevice.Get(i)->GetObject<WifiNetDevice>();
+			Ptr<WifiPhy> staPhy = device->GetPhy ();
+			Simulator::Schedule (time, &WifiPhy::ResumeFromSleep, staPhy);
+		}
+	}
+
+	Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+
+	for(std::map<uint32_t, NetDeviceContainer>::iterator it1 = m_clusterDevices.begin(); it1 != m_clusterDevices.end(); it1++)
+	{
+		for(NetDeviceContainer::Iterator it2 = it1->second.Begin(); it2 != it1->second.End(); it2++)
+		{
+			Ptr<WifiNetDevice> device = (*it2)->GetObject<WifiNetDevice>();
+			Ptr<WifiPhy> staPhy = device->GetPhy ();
+			Simulator::Schedule (time + NanoSeconds(rand->GetValue(0, 1000)), &WifiPhy::ResumeFromSleep, staPhy);
+		}
+	}
+}
+
+void
+Experiment::ClusterSleep(uint32_t id, Time time)
+{
+	for(uint32_t i = 0; i < m_relayClusterDevice.GetN(); i++)
+	{
+		if (id == m_relayClusterDevice.Get(i)->GetNode()->GetId())
+		{
+			Ptr<WifiNetDevice> device = m_relayClusterDevice.Get(i)->GetObject<WifiNetDevice>();
+			Ptr<WifiPhy> staPhy = device->GetPhy ();
+			Simulator::Schedule (time, &WifiPhy::SetSleepMode, staPhy);
+		}
+	}
+
+	for(std::map<uint32_t, NetDeviceContainer>::iterator it1 = m_clusterDevices.begin(); it1 != m_clusterDevices.end(); it1++)
+	{
+		for(NetDeviceContainer::Iterator it2 = it1->second.Begin(); it2 != it1->second.End(); it2++)
+		{
+			Ptr<WifiNetDevice> device = (*it2)->GetObject<WifiNetDevice>();
+			Ptr<WifiPhy> staPhy = device->GetPhy ();
+			Simulator::Schedule (time, &WifiPhy::SetSleepMode, staPhy);
+		}
+	}
+}
+void
+Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate, bool efiActive)
 {
 	WifiHelper wifiHelper;
 	wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
 	//TODO Should the FragmentationThreshold be set here or not down for the client nodes?
-	wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager", "FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+	wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+			"DataMode", StringValue("HtMcs1"),
+			"FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
 
 	SpectrumWifiPhyHelper wifiPhyHelper;
 	wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
@@ -108,6 +181,7 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 
 		m_relayToApDevice.Add(device);
 
+		Ipv4InterfaceContainer ipv4IfContainer;
 
 		if(m_relayApIpAddress.count(relayId) == 0)
 		{
@@ -116,15 +190,14 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			Ipv4AddressHelper addressHelper;
 
 			addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
-			addressHelper.Assign(device);
+			ipv4IfContainer = addressHelper.Assign(device);
 			m_relayApIpAddress[relayId] = addressHelper;
 		}
 		else
 		{
-			m_relayApIpAddress[relayId].Assign(device);
+			ipv4IfContainer = m_relayApIpAddress[relayId].Assign(device);
 		}
 
-		SetupReceivePacket(device.Get(0));
 		break;
 	}
 
@@ -138,7 +211,8 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 		ssid = Ssid (ss.str());
 
 		macHelper.SetType ("ns3::ApWifiMac",
-				"Ssid", SsidValue (ssid));
+				"Ssid", SsidValue (ssid),
+				"EnableBeaconJitter", BooleanValue(true));
 
 		NetDeviceContainer device = wifiHelper.Install (wifiPhyHelper, macHelper, node);
 		m_relayClusterDevice.Add(device);
@@ -159,8 +233,15 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			m_clusterIpAddress[node->GetId()].Assign(device);
 		}
 
-		SetupReceivePacket(device.Get(0));
 
+//		SetupReceivePacket(device.Get(0));
+
+
+					//TODO Send packets to local broadcast
+					// But we can't monitor using FlowMonitor like this
+//		ss.str("");
+//		ss << "10.0." << node->GetId() << ".255";
+//		InstallApplications(device, Ipv4Address(ss.str().c_str()));
 
 		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(48));
 		ss.str("");
@@ -174,6 +255,7 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 
 		m_relayToApDevice.Add(device);
 
+		Ipv4InterfaceContainer ipv4IfContainer;
 
 		if(m_relayApIpAddress.count(relayId) == 0)
 		{
@@ -182,15 +264,15 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			Ipv4AddressHelper addressHelper;
 
 			addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
-			addressHelper.Assign(device);
+			ipv4IfContainer = addressHelper.Assign(device);
 			m_relayApIpAddress[relayId] = addressHelper;
 		}
 		else
 		{
-			m_relayApIpAddress[relayId].Assign(device);
+			ipv4IfContainer = m_relayApIpAddress[relayId].Assign(device);
 		}
 
-		SetupReceivePacket(device.Get(0));
+//		SetupReceivePacket(device.Get(0));
 
 		break;
 	}
@@ -224,26 +306,31 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			m_relayApIpAddress[node->GetId()].Assign(device);
 		}
 
-		SetupReceivePacket(device.Get(0));
+//		SetupReceivePacket(device.Get(0));
 
 		break;
 	}
 	case NodeSpec::STA:
 	{
-
 		// Setting a the Relay as an access point to it's clulser's stations.
 		std::stringstream ss;
 		Ssid ssid;
 		ss << "RelayAP" << relayId;
 		ssid = Ssid (ss.str());
 
+		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(44));
+
 		macHelper.SetType ("ns3::StaWifiMac",
 				"Ssid", SsidValue (ssid),
-				"BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
+				"MaxMissedBeacons", UintegerValue(1000)); /// Make sure cluster nodes never deassociate from their relays
+//				"BE_MaxAmpduSize", UintegerValue(0)); // Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
 		NetDeviceContainer device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
+		device.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<StaWifiMac>()->TraceConnectWithoutContext("Assoc", MakeCallback(&LogAssoc));
+		device.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<StaWifiMac>()->TraceConnectWithoutContext("DeAssoc", MakeCallback(&LogDeAssoc));
+
 		m_clusterDevices[relayId].Add(device);
 
-		//		   internet.Install(node);
+		Ipv4InterfaceContainer ipv4IfContainer;
 
 		if(m_clusterIpAddress.count(relayId) == 0)
 		{
@@ -252,14 +339,16 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			Ipv4AddressHelper addressHelper;
 
 			addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
-			addressHelper.Assign(device);
+			ipv4IfContainer = addressHelper.Assign(device);
 			m_clusterIpAddress[relayId] = addressHelper;
 		}
 		else
 		{
-			m_clusterIpAddress[relayId].Assign(device);
+			ipv4IfContainer = m_clusterIpAddress[relayId].Assign(device);
 		}
 
+//		Ptr<StaWifiMac> mac = device.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<StaWifiMac>();
+//		EnableActiveProbing(mac);
 		SetupReceivePacket(device.Get(0));
 
 		break;
@@ -269,13 +358,17 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 
 }
 
+
 void
 Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 {
 
+	std::map<uint32_t, double> relayResourceMap;
+
 	for(uint32_t i = 0; i != nodeSpecs.size(); i++)
 	{
 		Ptr<Node> node = CreateObject<Node> ();
+		NS_ASSERT(node->GetId() == nodeSpecs[i].GetId());
 		Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel> ();
 		mobility->SetPosition(nodeSpecs[i].GetPosition());
 		node->AggregateObject(mobility);
@@ -283,38 +376,86 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		m_allNodes.Add(node);
 		if(nodeSpecs[i].GetType()==NodeSpec::RELAY)
 		{
+			relayResourceMap[nodeSpecs[i].GetId()] = nodeSpecs[i].GetResourceRate();
 			m_relayNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::RELAY, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), efiActive);
+			SetupNode(node, NodeSpec::RELAY, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(), efiActive);
 		}
 		else if(nodeSpecs[i].GetType()==NodeSpec::STA)
 		{
 			m_clusterNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::STA, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), efiActive);
+			SetupNode(node, NodeSpec::STA, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(), efiActive);
 
 		}
 		else if(nodeSpecs[i].GetType()==NodeSpec::AP)
 		{
 			m_apNodes.Add(node);
-			SetupNode(node, NodeSpec::AP, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), efiActive);
+			SetupNode(node, NodeSpec::AP, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(),  efiActive);
 		}
 		else if(nodeSpecs[i].GetType()==NodeSpec::STA_NORMAL)
 		{
 			m_relayNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::STA_NORMAL, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), efiActive);
+			SetupNode(node, NodeSpec::STA_NORMAL, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(),  efiActive);
 		}
 	}
 
-	for(std::map<uint32_t, NetDeviceContainer>::iterator it = m_clusterDevices.begin(); it != m_clusterDevices.end(); it++)
+	for(std::map<uint32_t, NodeContainer>::iterator it = m_relayNodes.begin(); it!=m_relayNodes.end(); it++)
 	{
-		std::stringstream ss;
-		ss.str("");
-		ss << "10.0." << it->first << ".2";
-	    InstallApplications(m_apDevice, Ipv4Address(ss.str().c_str()));
+		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
+		{
+			uint32_t infN = (*nIt)->GetObject<Ipv4>()->GetNInterfaces();
+			std::cout << "RELAY " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(infN - 1,0).GetLocal() // TODO Because we always create the AP interface before the STA interface
+							<< " connected to AP address " << m_apNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
+							<< std::endl;
+		}
+
 	}
+	for(std::map<uint32_t, NodeContainer>::iterator it = m_clusterNodes.begin(); it!= m_clusterNodes.end(); it++)
+	{
+		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
+		{
+			std::cout << "STA " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+						<< " connected to RELAY address " << NodeList::GetNode(it->first)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
+						<< std::endl;
+		}
+	}
+
+	for(NetDeviceContainer::Iterator it = m_relayClusterDevice.Begin(); it!= m_relayClusterDevice.End(); it++)
+	{
+		uint32_t id = (*it)->GetNode()->GetId();
+		double resRate = relayResourceMap[id];
+		double duration = m_totalResources*resRate/100;
+
+//		ClusterSleep(id, Now());
+//		ClusterWakeup(id, Seconds(timeStart));
+//		ClusterSleep(id, Seconds(m_totalResources)-NanoSeconds(1));
+//
+//		m_totalResources -= g_simTime*resRate/100;
+//
+//		Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
+//		Ptr<WifiPhy> staPhy = DynamicCast<WifiNetDevice> (*it)->GetPhy ();
+//		Simulator::Schedule (Now(),
+//				&WifiPhy::SetSleepMode, staPhy);
+//
+//		Simulator::Schedule (Seconds(rand->GetValue(0,10)),
+//				&WifiPhy::ResumeFromSleep, staPhy);
+
+		NetDeviceContainer src = NetDeviceContainer(*it);
+		Ptr<Node> node = (*it)->GetNode();
+		NetDeviceContainer dst = m_clusterDevices[node->GetId()];
+		double timeStart = m_remainingResource - duration + (g_simTime - m_totalResources);
+		double timeStop = m_remainingResource + (g_simTime - m_totalResources);
+		InstallApplications(src, dst, Seconds(timeStart), Seconds(timeStop));
+		ClusterSleep(id, Seconds(timeStop)+NanoSeconds(1));
+
+		m_remainingResource -= duration;
+////
+	}
+
 
 	m_clusterIpAddress.clear();
 	m_relayApIpAddress.clear();
 }
+
 
 void
 Experiment::SetupReceivePacket (Ptr<NetDevice> device)
@@ -326,6 +467,7 @@ Experiment::SetupReceivePacket (Ptr<NetDevice> device)
 	InetSocketAddress local = InetSocketAddress (addr.GetLocal(), port);
 
 	Ptr <Socket> sink = Socket::CreateSocket (device->GetNode(), tid);
+	sink->SetAllowBroadcast(true);
 
 	sink->Bind (local);
 	sink->BindToNetDevice(device);
@@ -389,7 +531,7 @@ Experiment::ReceivePacket (Ptr <Socket> socket)
 
 //TODO This install an app sending traffic from every netdevice in src to every netdevice in dst
 void
-Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
+Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst, Time start, Time stop)
 {
 
 	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -409,20 +551,31 @@ Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
 				Address (InetSocketAddress (addr_dst.GetLocal(), port))); // TODO Send traffic to AP?
 		onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
 		onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-
+		onoff.SetConstantRate(DataRate("54Mbps"));
 		apps.Add(onoff.Install((*it1)->GetNode()));
 
-		std::cout << "address " << addr_src.GetLocal() << " sending packets to address " << addr_dst.GetLocal() << std::endl;
+		std::cout << "address " << addr_src.GetLocal() << " will send packets to address " << addr_dst.GetLocal()
+				<< " From " << start.GetSeconds() << " to " << stop.GetSeconds() << " for " << (stop - start).GetSeconds()
+				<< std::endl;
 
 	      }
 	}
 
-	apps.Start (Seconds (15));
-	apps.Stop (Seconds (100));
+	apps.Start (start);
+	apps.Stop (stop);
+}
+
+
+void
+EnableBroadcast(Ptr<Application> app)
+{
+	Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(app);
+    Ptr<Socket> socket = onoffApp->GetSocket();
+    socket->SetAllowBroadcast(true);
 }
 
 void
-Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address)
+Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address, Time start, Time stop)
 {
 
 	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -439,15 +592,23 @@ Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address)
 	    onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
 	    onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 
-	    apps.Add(onoff.Install((*it1)->GetNode()));
+	    ApplicationContainer appContainer = onoff.Install((*it1)->GetNode());
+	    Ptr<Application> onoffApp = appContainer.Get(0);
+	    Simulator::Schedule(Seconds(15)+NanoSeconds(1), EnableBroadcast, onoffApp);
 
-	    std::cout << "address " << addr_src.GetLocal() << " sending packets to address " << address << std::endl;
+
+	    apps.Add(appContainer);
+
+	    std::cout << "address " << addr_src.GetLocal() << "("
+	    		<< (src.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>() == 0? "STA":"Relay")
+				<< ") sending packets to cluster node with address " << address << std::endl;
 
 	  }
 
-	apps.Start (Seconds (15));
-	apps.Stop (Seconds (100));
+	apps.Start (start);
+	apps.Stop (stop);
 }
+
 
 void Experiment::Initialize ()
 {
@@ -456,10 +617,12 @@ void Experiment::Initialize ()
 
 	SpectrumChannelHelper channelHelper;
 	channelHelper.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
-	channelHelper.AddSpectrumPropagationLoss("ns3::FriisSpectrumPropagationLossModel");
+	channelHelper.AddSpectrumPropagationLoss("ns3::ConstantSpectrumPropagationLossModel");
 	channelHelper.SetChannel("ns3::MultiModelSpectrumChannel");
 	m_channel = channelHelper.Create();
 
+	m_totalResources = 100;
+	m_remainingResource = 100;
 
 }
 
@@ -508,7 +671,8 @@ NetDeviceContainer Experiment::GetNetDevices(NodeSpec::NodeType type) const
   return devices;
 }
 
-std::map<Ptr<NetDevice>, uint64_t> Experiment::GetPacketsTotal ()
+std::map<Ptr<NetDevice>, uint64_t>
+Experiment::GetPacketsTotal ()
 {
 	return m_packetsTotal;
 }
@@ -516,42 +680,60 @@ std::map<Ptr<NetDevice>, uint64_t> Experiment::GetPacketsTotal ()
 void
 Experiment::Run(int argc, char *argv[])
 {
-	double simTime = 20.0;
-	std::string animFile = "animation.xml";
+
+//	long int time = static_cast<long int>(std::time(nullptr));
+
+//	std::string animFile = "animation-";
+//	animFile.append(std::to_string(time).c_str());
+//	animFile.append(".xml");
 
 	CommandLine cmd;
-	cmd.AddValue("simTime","Simulation Time", simTime);
-	cmd.AddValue("animFile","Animation xml filename", animFile);
+	cmd.AddValue("simTime","Simulation Time", g_simTime);
+//	cmd.AddValue("animFile","Animation xml filename", animFile);
 
 
-	Simulator::Stop(Seconds(simTime));
+	Simulator::Stop(Seconds(g_simTime));
 
-	AnimationInterface anim (animFile.c_str());
-	anim.EnablePacketMetadata (true);
-	anim.SetMobilityPollInterval (Seconds (1));
+//	AnimationInterface anim (animFile.c_str());
+//	anim.EnablePacketMetadata (true);
+//	anim.SetMobilityPollInterval (Seconds (1));
+//
+//	for(NodeList::Iterator it = NodeList::Begin(); it != NodeList::End(); it++)
+//	{
+//		Ptr<ConstantPositionMobilityModel> mobility = (*it)->GetObject<ConstantPositionMobilityModel>();
+//		Vector position = mobility->GetPosition();
+//		anim.SetConstantPosition(*it, position.x, position.y, position.z);
+//	}
+//	anim.EnableWifiPhyCounters(Seconds(0), Seconds(g_simTime), Seconds(1));
+//	anim.EnableWifiMacCounters(Seconds(0), Seconds(g_simTime), Seconds(1));
+//	anim.EnableQueueCounters(Seconds(0), Seconds(g_simTime), Seconds(1));
 
-	for(NodeList::Iterator it = NodeList::Begin(); it != NodeList::End(); it++)
-	{
-		Ptr<ConstantPositionMobilityModel> mobility = (*it)->GetObject<ConstantPositionMobilityModel>();
-		Vector position = mobility->GetPosition();
-		anim.SetConstantPosition(*it, position.x, position.y, position.z);
-	}
-	anim.EnableWifiPhyCounters(Seconds(0), Seconds(simTime), Seconds(1));
-	anim.EnableWifiMacCounters(Seconds(0), Seconds(simTime), Seconds(1));
-	anim.EnableQueueCounters(Seconds(0), Seconds(simTime), Seconds(1));
+//	Ptr<FlowMonitor> flowMonitor;
+//	FlowMonitorHelper flowHelper;
+//	for(std::map<uint32_t, NodeContainer>::iterator it = m_clusterNodes.begin(); it != m_relayNodes.end(); it++)
+//		{
+//			flowMonitor = flowHelper.Install(NodeList::GetNode(it->first));
+//		}
+
+	Simulator::Schedule(Now(), &SimulationProgress);
 
 	Simulator::Run();
 
+//	std::string flowMonitorName = "flowmonitor-";
+//	flowMonitorName.append(std::to_string(time).c_str());
+//	flowMonitorName.append(".xml");
+//
+//	flowMonitor->SerializeToXmlFile(flowMonitorName.c_str(), true, true);
 
 	std::map<Ptr<NetDevice>, uint64_t> packetsTotal = GetPacketsTotal();
 	for(std::map<Ptr<NetDevice>, uint64_t>::iterator it = packetsTotal.begin(); it != packetsTotal.end(); it++)
 	{
 		std::cout <<
-				" at Node " << it->first->GetNode()->GetId() <<
-				" MAC type " << it->first->GetObject<WifiNetDevice>()->GetMac()->GetInstanceTypeId().GetName() <<
-				" Ipv4 Address " << it->first->GetNode()->GetObject<Ipv4L3Protocol>()->
+				"Node: " << it->first->GetNode()->GetId() <<
+				" type: " << it->first->GetObject<WifiNetDevice>()->GetMac()->GetInstanceTypeId().GetName() <<
+				" address: " << it->first->GetNode()->GetObject<Ipv4L3Protocol>()->
 				GetInterface(it->first->GetNode()->GetObject<Ipv4L3Protocol>()->GetInterfaceForDevice(it->first->GetObject<WifiNetDevice>()))->GetAddress(0).GetLocal () <<
-				" received " << it->second << " packets" << std::endl;
+				" received: " << it->second << " packets" << std::endl;
 	}
 
 

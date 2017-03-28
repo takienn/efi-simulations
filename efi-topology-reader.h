@@ -5,6 +5,7 @@
 #include "nodespec.h"
 #include <ostream>
 #include <sstream>
+#include <iosfwd>
 #include <vector>
 
 namespace ns3 {
@@ -27,8 +28,6 @@ private:
 
   std::vector<NodeSpec> m_nodeSpecs;
 };
-
-std::ostream& operator<< (std::ostream& os, NodeSpec const& nodeSpec);
 }
 
 #endif //EFI_TOPOLOGY_READER_H

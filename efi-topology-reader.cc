@@ -61,7 +61,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 
 		NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
 		nodeSpecs.push_back(apNodeSpec);
-		std::cout << apNodeSpec;
+//		std::cout << apNodeSpec;
 
 		type = 0;
 		id = 0;
@@ -78,45 +78,61 @@ EfiTopologyReader::ReadNodeSpec (void)
 		getline (topgen,line2);
 		lineBuffer2.str (line2);
 
-		while(lineBuffer1)
+		int i =0;
+		double value = 0;
+
+		NodeSpec nodeSpec;
+		while(lineBuffer1 >> value)
 		{
-			lineBuffer1 >> id;
-			lineBuffer1 >> type;
-			if(type == 1)
-				lineBuffer2 >> resRate;
-			NS_ASSERT(resRate >= 0);
-			lineBuffer1 >> locX;
-			lineBuffer1 >> locY;
-			lineBuffer1 >> oPsr;
-			NS_ASSERT(oPsr >= 0);
-			lineBuffer1 >> rPsr;
-			NS_ASSERT(rPsr >= 0);
-			lineBuffer1 >> nPsr;
-			NS_ASSERT(nPsr >= 0);
-			lineBuffer1 >> relayId; // Put it before the If to make sure lineBuffer1 is advanced
-			if(type == 1 || type == 3)
-				relayId = 0;
-
-			std::string nodeType;
-			if(type == 1)
-				nodeType = "RELAY";
-			else if(type == 2)
-				nodeType = "STA";
-			else if(type == 0)
-				nodeType = "AP";
-			else if(type == 3)
-				nodeType = "STA_NORMAL";
-			else
+			switch(i)
 			{
-				std::cout << "Unrecognizable node type" << std::endl;
+			case 0:
+				id = (uint32_t)value;
 				break;
+			case 1:
+				type = (uint32_t)value;
+				if(type == 1)
+					lineBuffer2 >> resRate;
+				NS_ASSERT(resRate >= 0);
+				break;
+			case 2:
+				locX = value;
+				break;
+			case 3:
+				locY = value;
+				break;
+			case 4:
+				oPsr = value;
+				NS_ASSERT(oPsr >= 0);
+				break;
+			case 5:
+				rPsr = value;
+				NS_ASSERT(rPsr >= 0);
+				break;
+			case 6:
+				nPsr = value;
+				NS_ASSERT(nPsr >= 0);
+				break;
+			case 7:
+				relayId = (uint32_t) value;
+				break;
+			default:
+				NS_FATAL_ERROR("Can't reach 8 parameters");
+
 			}
+			i++;
 
-			NodeSpec nodeSpec(id, (NodeSpec::NodeType)type, Vector3D(locX,locY,0), relayId, oPsr*0.01, rPsr*0.01, nPsr*0.01, resRate);
-			std::cout << nodeSpec;
+			if(i==8)
+			{
+				if(type == 1 || type == 3)
+					relayId = 0;
 
-			nodeSpecs.push_back(nodeSpec);
+				nodeSpec = NodeSpec(id, (NodeSpec::NodeType)type, Vector3D(locX,locY,0), relayId, oPsr*0.01, rPsr*0.01, nPsr*0.01, resRate);
+				nodeSpecs.push_back(nodeSpec);
+				i = 0;
+			}
 		}
+
 		nodeSpecsList.push_back(nodeSpecs);
 	}
 	return nodeSpecsList;
