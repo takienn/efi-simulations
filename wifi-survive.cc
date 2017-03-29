@@ -36,6 +36,7 @@ int main (int argc, char *argv[])
 //	    it->push_back(nodeSpec);
 
 		std::cout << "--------- Running new experiment ---------" << std::endl;
+		std::cout.flush();
 
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
