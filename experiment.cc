@@ -692,6 +692,12 @@ MonitorPhyTx (Experiment* experiment, Ptr<NetDevice> device, Ptr<const Packet> p
   experiment->UpdatePhyTxBytes(device, packet->GetSize());
 }
 
+static void
+MonitorPhyRx (Experiment* experiment, Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu, SignalNoiseDbm signalNoise)
+{
+  experiment->UpdatePhyRxBytes(device, packet->GetSize());
+}
+
 void
 EnableBroadcast(Ptr<Application> app)
 {
@@ -705,6 +711,14 @@ Experiment::UpdatePhyTxBytes(Ptr<NetDevice> device, double value)
 {
   m_totalPhyTxBytes[device] += value;
 }
+
+void
+Experiment::UpdatePhyRxBytes(Ptr<NetDevice> device, double value)
+{
+  if(m_rand2->GetValue() > 1 - m_nodePsrValues[device->GetNode()->GetId()])
+    m_totalPhyRxBytes[device] += value;
+}
+
 
 void
 Experiment::UpdateQueueWait(Ptr<NetDevice> device, Time time)
@@ -773,6 +787,8 @@ void Experiment::Initialize ()
 	m_channel = channelHelper.Create();
 
 	m_rand = CreateObject<UniformRandomVariable>();
+	m_rand2 = CreateObject<UniformRandomVariable>();
+
 }
 
 //TODO fix return variables
@@ -859,6 +875,7 @@ Experiment::SetupHooks (NetDeviceContainer devices)
 
 		Ptr<WifiPhy> phy = devices.Get(i)->GetObject<WifiNetDevice>()->GetPhy();
 		phy->TraceConnectWithoutContext("MonitorSnifferTx", MakeBoundCallback(&MonitorPhyTx, this, devices.Get(i)));
+		phy->TraceConnectWithoutContext("MonitorSnifferRx", MakeBoundCallback(&MonitorPhyRx, this, devices.Get(i)));
 
 		SetupReceivePacket(devices.Get(i));
 	}
@@ -975,9 +992,12 @@ Experiment::Run(bool downlink)
 
 	  for(uint32_t i = 0; i < devices.GetN(); i++)
 	    {
-	      std::cout << "ThroughputClient " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
+	      std::cout << "ClientRX " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
 	      double throughput = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
-	      std::cout << " " << throughput << "MB/s\n";
+	      std::cout << " " << throughput << "MB/s(data)";
+	      throughput = m_totalPhyRxBytes[devices.Get(i)]/resRate/1.0e6;
+	      std::cout << " " << throughput << "MB/s(phy)";
+
 	      std::cout.flush();
 	    }
 	  std::cout << std::endl;
@@ -1005,13 +1025,13 @@ Experiment::Run(bool downlink)
 	      std::cout << "AvgQueueDropTime " << queueAvgDropTime << "s\n";
 	      std::cout << "QueueDropRate " << 100*dropRate << "%\n";
 	      double throughput = m_totalPhyTxBytes[devices.Get(i)]/resRate/1.0e6;
-	      std::cout << "Throughput " << throughput << "MB/s\n";
+	      std::cout << "ThroughputTX " << throughput << "MB/s(data)";
 	      Ptr<NetDevice> device = devices.Get(i);
 	      std::cout << " " << throughput << "MB/s\n";
 	      std::cout.flush();
 	    }
-	  std::cout << "RelayRxThroughput " << m_packetsTotal[*rit]/resRate/1.0e6 << "MB/s"
-		    << std::endl;
+	  std::cout << "RelayRxThroughput " << m_packetsTotal[*rit]/resRate/1.0e6 << "MB/s(data)"
+		    << m_totalPhyRxBytes[*rit]/resRate/1.0e6 << "MB/s(phy)"<< std::endl;
 
 	  NS_LOG_UNCOND("--- Finished Running Uplink at Cluster " << id << " ---");
 	}

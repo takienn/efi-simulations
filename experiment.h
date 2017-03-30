@@ -52,6 +52,8 @@ public:
   void ResetStats();
 
   void UpdatePhyTxBytes(Ptr<NetDevice>, double value);
+  void UpdatePhyRxBytes(Ptr<NetDevice>, double value);
+
   void UpdateQueueWait(Ptr<NetDevice> device, Time time);
   void UpdateQueueDrop(Ptr<NetDevice> device, Time time);
   void UpdateQueueEnqueue(Ptr<NetDevice> device);
@@ -91,6 +93,8 @@ private:
 
   std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
   std::map<Ptr<NetDevice>, uint64_t> m_totalPhyTxBytes;
+  std::map<Ptr<NetDevice>, uint64_t> m_totalPhyRxBytes;
+
   std::map<Ptr<NetDevice> , uint64_t> m_queueEnqueueRecord;
   std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueWaitRecord;
   std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueDropRecord;
@@ -109,6 +113,8 @@ private:
 
 
   Ptr<UniformRandomVariable> m_rand;
+  Ptr<UniformRandomVariable> m_rand2;
+
 //  std::map<Mac48Address, Ptr<WifiNetDevice> > m_deviceAddressMap;
 };
 
