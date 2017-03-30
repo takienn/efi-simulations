@@ -46,21 +46,32 @@ ApWifimac uses two different types of queuing mechanism based on wether or not Q
 - ```Drop```: fired when a packet is droped from the queue.
 
 ### Usage
-```
+```cpp
 Ptr<ApWifiMac> mac = netdevice->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>();
 Ptr<WifiMacQueue> wifiMacQueue = mac->GetDcaTxop()->GetQueue();
 ```
 
 ## Bug 4:
+
 This one is related to queue monitoring.
-Hooking directly to the Queue<Item> instance and logging the Enqeueu/Dequeue only accounts for Queuing and Dequeing that actually get downs to there, as a consequence it is unlikely that any dropping will ever happen. More clearly, the NetDeviceQueue implementation handles Items queueing/dequeing to the queue in such a way that it doesn't allow that and stops any packets(items) to be inserted into the queue if it is not able to hold them
+Hooking directly to the Queue<Item> instance and logging the Enqeueu/Dequeue only accounts for Queuing and Dequeing that actually get downs to there, as a consequence it is unlikely that any dropping will ever happen. More clearly, the NetDeviceQueue implementation handles Items queueing/dequeing to the queue in such a way that it doesn't allow that and stops any packets(items) to be inserted into the queue if it is not able to hold them.
+
 ```PacketEnqueued``` traces the ```Queue::Enqueue``` actions and stops the queueing via ```NetDeviceQueue::Stop``` if the queue is not able to store another packet.
+
 The ```TrafficControlLayer``` handles transmission, when it attemps to send a packet it enqueues it into a ```QueueDisc``` object that when run for transmission at ```QueueDisc::Transmit``` checks if the underlying NetDeviceQueue is not stopped (either for full queue or attaing queue defined limits). If the NetDeviceQueue is stopped, it Requeues the packet untill it is Dequeued.
 
 With that said, a better way to monitor queueing behavior is to trace Enqueue/Dequeue/Requeue/Drop in the ```QueueDisc``` hold by a ```TrafficControlLayer``` instance.
+
 A ```TrafficControlLayer``` instance can be access like this:
+
+```cpp
 Ptr<TrafficControlLayer> tc = node->GetObject<TrafficControlLayer> ();
+```
+
 Then accessing the ```RootQueueDiscList``` stored there for all supported node's devices:
+
+```cpp
 ObjectMapValue rootQueueDiscList;
 tc->GetAttribute ("RootQueueDiscList", rootQueueDiscList);
+```
 
