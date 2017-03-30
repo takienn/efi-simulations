@@ -627,9 +627,9 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		}
 	}
 
-	for(NetDeviceContainer::Iterator it = m_relayNodes[0].Begin(); it!= m_relayClusterDevice.End(); it++)
+	for(NodeContainer::Iterator it = m_relayNodes[0].Begin(); it!= m_relayNodes[0].End(); it++)
 	{
-		uint32_t id = (*it)->GetNode()->GetId();
+		uint32_t id = (*it)->GetId();
 
 		ClusterSleep(id, Now());
 
