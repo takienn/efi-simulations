@@ -20,6 +20,7 @@ class Experiment
 public:
   Experiment ();
   virtual ~Experiment ();
+  void Destroy (void);
 
   void CreateNodes (std::vector<NodeSpec> nodes, bool efiActive = true);
 
@@ -47,7 +48,7 @@ public:
   void ClusterWakeup(uint32_t id, Time time);
   void ClusterSleep(uint32_t id, Time time);
 
-  void Run(bool downlink = true);
+  void Run(bool downlink = true, double totResources = 100);
 
   void ResetStats();
 

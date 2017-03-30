@@ -37,8 +37,9 @@ int main (int argc, char *argv[])
 
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
+	    experiment.Run(false, 10);
 	    experiment.Run(true);
-	    experiment.Run(false);
+	    experiment.Destroy();
 
 	  }
 
