@@ -339,7 +339,7 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 	//	  wifiPhyHelper.Set ("RxNoiseFigure", DoubleValue (0.0));
 	//	  wifiPhyHelper.Set ("EnergyDetectionThreshold", DoubleValue (-110.0));
 	//	  wifiPhyHelper.Set ("CcaMode1Threshold", DoubleValue (-110.0));
-	wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel", "rate", DoubleValue(psr));
+//	wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel", "rate", DoubleValue(psr));
 	wifiPhyHelper.SetChannel (m_channel);
 	WifiMacHelper macHelper;
 
@@ -627,7 +627,7 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		}
 	}
 
-	for(NetDeviceContainer::Iterator it = m_relayClusterDevice.Begin(); it!= m_relayClusterDevice.End(); it++)
+	for(NetDeviceContainer::Iterator it = m_relayNodes[0].Begin(); it!= m_relayClusterDevice.End(); it++)
 	{
 		uint32_t id = (*it)->GetNode()->GetId();
 
@@ -830,8 +830,8 @@ Experiment::InstallApplications(uint32_t relayId)
 		onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
 		onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 		onoff.SetAttribute ("PacketSize", UintegerValue(1472)); // Total IP packet size of 1500
-		onoff.SetConstantRate(DataRate("1Gbps"));
-		apps.Add(onoff.Install((*it)->GetNode()));
+		onoff.SetConstantRate(DataRate("150Mbps"));
+		apps.Add(onoff.Install(relayDevice->GetNode()));
 
 //		NS_LOG_INFO("address " << addr_src.GetLocal() << " will send packets to address " << addr_dst.GetLocal()
 //				<< " From " << start.GetSeconds() << " to " << stop.GetSeconds() << " for " << (stop - start).GetSeconds()
