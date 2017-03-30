@@ -996,7 +996,7 @@ Experiment::Run(bool downlink)
 	      double throughput = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
 	      std::cout << " " << throughput << "MB/s(data)";
 	      throughput = m_totalPhyRxBytes[devices.Get(i)]/resRate/1.0e6;
-	      std::cout << " " << throughput << "MB/s(phy)";
+	      std::cout << " " << throughput << "MB/s(phy)\n";
 
 	      std::cout.flush();
 	    }
@@ -1027,7 +1027,7 @@ Experiment::Run(bool downlink)
 	      double throughput = m_totalPhyTxBytes[devices.Get(i)]/resRate/1.0e6;
 	      std::cout << "ThroughputTX " << throughput << "MB/s(data)";
 	      Ptr<NetDevice> device = devices.Get(i);
-	      std::cout << " " << throughput << "MB/s\n";
+	      std::cout << " " << throughput << "MB/s(phy)\n";
 	      std::cout.flush();
 	    }
 	  std::cout << "RelayRxThroughput " << m_packetsTotal[*rit]/resRate/1.0e6 << "MB/s(data)"
