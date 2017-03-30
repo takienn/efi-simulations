@@ -20,8 +20,12 @@ int main (int argc, char *argv[])
 {
 
 	bool efiActive = true;
+	double totResources = 10;
 	CommandLine cmd;
 	cmd.AddValue("efiActive", "normal or Efi mode", efiActive);
+	cmd.AddValue("totalResources", "Total Resources (s)", totResources);
+	cmd.Parse(argc, argv);
+
 	Experiment experiment;
 
 	EfiTopologyReader topoReader;
@@ -37,8 +41,8 @@ int main (int argc, char *argv[])
 
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
-	    experiment.Run(false, 10);
-	    experiment.Run(true);
+	    experiment.Run(true, totResources);
+	    experiment.Run(true, totResources);
 	    experiment.Destroy();
 
 	  }

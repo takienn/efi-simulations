@@ -56,8 +56,10 @@ public:
   void UpdatePhyRxBytes(Ptr<NetDevice>, double value);
 
   void UpdateQueueWait(Ptr<NetDevice> device, Time time);
-  void UpdateQueueDrop(Ptr<NetDevice> device, Time time);
+  void UpdateQueueDrop(Ptr<NetDevice> device);
   void UpdateQueueEnqueue(Ptr<NetDevice> device);
+  void UpdateRequeue(Ptr<NetDevice> device);
+
 
 private:
   void Initialize ();
@@ -97,8 +99,9 @@ private:
   std::map<Ptr<NetDevice>, uint64_t> m_totalPhyRxBytes;
 
   std::map<Ptr<NetDevice> , uint64_t> m_queueEnqueueRecord;
+  std::map<Ptr<NetDevice> , uint64_t> m_queueRequeueRecord;
   std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueWaitRecord;
-  std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueDropRecord;
+  std::map<Ptr<NetDevice>, uint64_t> m_queueDropRecord;
 
   std::map<uint32_t, double> m_nodePsrValues;
 
