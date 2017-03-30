@@ -31,6 +31,9 @@ Apparently when activating "ActiveProbe" on StaWifiMac in our scenario we hit th
 assert failed. cond="duration >= MicroSeconds (0)", msg="Please provide test case to maintainers if this assert is hit.", file=../src/wifi/model/mac-low.cc, line=2150
 terminate called without an active exception
 ```
+## Bug 3:
+For some reason while using ```PsrErrorRateModel``` at WifiPhy the throughput considerably drops, no matter what is the value of the PSR set.
+An alternative is to enforce PSR at the ```ReceivePacket``` function.
 
 ## Queue monitoring
 ApWifimac uses two different types of queuing mechanism based on wether or not QoS is enabled.
