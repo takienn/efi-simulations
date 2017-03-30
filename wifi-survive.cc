@@ -21,9 +21,15 @@ int main (int argc, char *argv[])
 
 	bool efiActive = true;
 	double totResources = 10;
+	bool downlink = true;
+	bool uplink = true;
+
 	CommandLine cmd;
 	cmd.AddValue("efiActive", "normal or Efi mode", efiActive);
 	cmd.AddValue("totalResources", "Total Resources (s)", totResources);
+	cmd.AddValue("downlink", "Total Resources (s)", downlink);
+	cmd.AddValue("uplink", "Total Resources (s)", uplink);
+
 	cmd.Parse(argc, argv);
 
 	Experiment experiment;
@@ -41,8 +47,10 @@ int main (int argc, char *argv[])
 
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
-	    experiment.Run(true, totResources);
-	    experiment.Run(true, totResources);
+	    if(downlink)
+	    	experiment.Run(true, totResources);
+	    if(uplink)
+	    	experiment.Run(false, totResources);
 	    experiment.Destroy();
 
 	  }

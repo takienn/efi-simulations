@@ -13,9 +13,10 @@
 
 #include <ctime>
 
-NS_LOG_COMPONENT_DEFINE("EfiExperiment");
 
-using namespace ns3;
+namespace ns3 {
+
+NS_LOG_COMPONENT_DEFINE("EfiExperiment");
 
 uint16_t port = 9;
 double g_simTime = 300.0;
@@ -164,10 +165,10 @@ Experiment::~Experiment()
 void
 Experiment::LogAssoc (Mac48Address sta, Mac48Address addr)
 {
-	NS_LOG_INFO(sta << "=" << GetIpv4OfMac48(sta).GetLocal()
-			<< " Associated with " << addr << "=" << GetIpv4OfMac48(addr).GetLocal()
-			<< " at time " << Now().GetSeconds()
-			<< std::endl);
+//	NS_LOG_INFO(sta << "=" << GetIpv4OfMac48(sta).GetLocal()
+//			<< " Associated with " << addr << "=" << GetIpv4OfMac48(addr).GetLocal()
+//			<< " at time " << Now().GetSeconds()
+//			<< std::endl);
 
 	m_relayAssocTable[GetDeviceOfMac48(addr)->GetNode()->GetId()]++;
 }
@@ -194,8 +195,8 @@ Experiment::ClusterWakeup(uint32_t id, Time time)
 			Ptr<WifiNetDevice> device = m_relayClusterDevice.Get(i)->GetObject<WifiNetDevice>();
 			Ptr<WifiPhy> staPhy = device->GetPhy ();
 			Simulator::Schedule (time, &WifiPhy::ResumeFromSleep, staPhy);
-			NS_LOG_INFO("waiking up " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal()
-					<< " at " << time.GetSeconds());
+//			NS_LOG_INFO("waiking up " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal()
+//					<< " at " << time.GetSeconds());
 			break;
 		}
 	}
@@ -208,8 +209,8 @@ Experiment::ClusterWakeup(uint32_t id, Time time)
 			Ptr<WifiNetDevice> device = (*it)->GetObject<WifiNetDevice>();
 			Ptr<WifiPhy> staPhy = device->GetPhy ();
 			Simulator::Schedule (time + MilliSeconds(rand->GetValue(0, 1000)), &WifiPhy::ResumeFromSleep, staPhy);
-			NS_LOG_INFO("waiking up " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal()
-					<< " at " << time.GetSeconds());
+//			NS_LOG_INFO("waiking up " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal()
+//					<< " at " << time.GetSeconds());
 	}
 }
 
@@ -224,7 +225,7 @@ Experiment::ClusterSleep(uint32_t id, Time time)
 			Ptr<WifiPhy> staPhy = device->GetPhy ();
 			Simulator::Schedule (time, &WifiPhy::SetSleepMode, staPhy);
 
-			NS_LOG_INFO("putting to sleep " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal() << " at " << time.GetSeconds());
+//			NS_LOG_INFO("putting to sleep " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal() << " at " << time.GetSeconds());
 			break;
 		}
 	}
@@ -236,7 +237,7 @@ Experiment::ClusterSleep(uint32_t id, Time time)
 			Ptr<WifiNetDevice> device = (*it)->GetObject<WifiNetDevice>();
 			Ptr<WifiPhy> staPhy = device->GetPhy ();
 			Simulator::Schedule (time, &WifiPhy::SetSleepMode, staPhy);
-			NS_LOG_INFO("putting to sleep " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal() << " at " << time.GetSeconds());
+//			NS_LOG_INFO("putting to sleep " << GetIpv4OfMac48(device->GetMac()->GetAddress()).GetLocal() << " at " << time.GetSeconds());
 	}
 }
 void
@@ -519,26 +520,26 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		}
 	}
 
-	for(std::map<uint32_t, NodeContainer>::iterator it = m_relayNodes.begin(); it!=m_relayNodes.end(); it++)
-	{
-		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
-		{
-			uint32_t infN = (*nIt)->GetObject<Ipv4>()->GetNInterfaces();
-			NS_LOG_INFO("RELAY " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(infN - 1,0).GetLocal() // TODO Because we always create the AP interface before the STA interface
-							<< " connected to AP address " << m_apNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
-							<< std::endl);
-		}
-
-	}
-	for(std::map<uint32_t, NodeContainer>::iterator it = m_clusterNodes.begin(); it!= m_clusterNodes.end(); it++)
-	{
-		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
-		{
-			NS_LOG_INFO("STA " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
-						<< " connected to RELAY address " << NodeList::GetNode(it->first)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
-						<< std::endl);
-		}
-	}
+//	for(std::map<uint32_t, NodeContainer>::iterator it = m_relayNodes.begin(); it!=m_relayNodes.end(); it++)
+//	{
+//		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
+//		{
+////			uint32_t infN = (*nIt)->GetObject<Ipv4>()->GetNInterfaces();
+////			NS_LOG_INFO("RELAY " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(infN - 1,0).GetLocal() // TODO Because we always create the AP interface before the STA interface
+////							<< " connected to AP address " << m_apNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
+////							<< std::endl);
+//		}
+//
+//	}
+//	for(std::map<uint32_t, NodeContainer>::iterator it = m_clusterNodes.begin(); it!= m_clusterNodes.end(); it++)
+//	{
+//		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
+//		{
+////			NS_LOG_INFO("STA " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+////						<< " connected to RELAY address " << NodeList::GetNode(it->first)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
+////						<< std::endl);
+//		}
+//	}
 
 	for(NodeContainer::Iterator it = m_relayNodes[0].Begin(); it!= m_relayNodes[0].End(); it++)
 	{
@@ -869,7 +870,7 @@ Experiment::ClientsAssociated (uint32_t id)
 	if(m_clusterNodes[id].GetN() > m_relayAssocTable[id])
 		return false;
 
-	NS_LOG_INFO(m_relayAssocTable[id] << " Clients connected to relay " << id << std::endl);
+//	NS_LOG_INFO(m_relayAssocTable[id] << " Clients connected to relay " << id << std::endl);
 	return true;
 }
 
@@ -916,152 +917,164 @@ Experiment::SetupPsr(NetDeviceContainer devices, double val = 2)
 void
 Experiment::Run(bool downlink, double totResources)
 {
-  std::cout.flush();
 
-  Simulator::Schedule(Now(), &SimulationProgress);
-  for(uint32_t idx = 0; idx< m_relayClusterDevice.GetN(); idx++)
-    {
-      uint32_t id = m_relayClusterDevice.Get(idx)->GetNode()->GetId();
-      Ptr<NetDevice> relayDevice = m_relayClusterDevice.Get(idx);
-
-      double resRate = totResources*0.01*m_relayResourceMap[id]; // Apparently total 100 seconds is not enough
-
-      if(downlink)
-	std::cout << "\n--- Running Downlink at Cluster " << id << " Resources " << resRate << "s ---\n";
-      else
-	std::cout << "\n--- Running Uplink at Cluster " << id << " Resources " << resRate << "s ---\n";
-
-      std::cout.flush();
-      std::cout << "Clients in this cluster\n";
-      std::cout.flush();
-      NodeContainer nodes = m_clusterNodes[id];
-      for(uint32_t i = 0; i < nodes.GetN(); i++)
+	//  Simulator::Schedule(Now(), &SimulationProgress);
+	for(uint32_t idx = 0; idx< m_relayClusterDevice.GetN(); idx++)
 	{
-	  Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
-	  std::cout << ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[nodes.Get(i)->GetId()] << "\n";
-	  std::cout.flush();
+		uint32_t id = m_relayClusterDevice.Get(idx)->GetNode()->GetId();
+		Ptr<NetDevice> relayDevice = m_relayClusterDevice.Get(idx);
+
+		double resRate = totResources*0.01*m_relayResourceMap[id]; // Apparently total 100 seconds is not enough
+
+		if(downlink)
+			NS_LOG_LOGIC("\n--- Running Downlink at Cluster " << id << " Resources " << resRate << "s ---\n");
+		else
+			NS_LOG_LOGIC("\n--- Running Uplink at Cluster " << id << " Resources " << resRate << "s ---\n");
+
+		NS_LOG_LOGIC("Clients in this cluster");
+		NodeContainer nodes = m_clusterNodes[id];
+		for(uint32_t i = 0; i < nodes.GetN(); i++)
+		{
+			Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
+			NS_LOG_LOGIC(ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[nodes.Get(i)->GetId()]);
+		}
+
+		SetupHooks (NetDeviceContainer(relayDevice));
+		SetupHooks (m_clusterDevices[id]);
+
+		ClusterWakeup(id, Now());
+		while(!ClientsAssociated(id))
+		{
+			Simulator::Stop(Seconds(10));
+			Simulator::Run();
+		}
+		ResetStats();
+
+//		if(downlink)
+//			NS_LOG_UNCOND("Downlink traffic started");
+//		else
+//			NS_LOG_UNCOND("Uplink traffic started");
+
+		Simulator::Stop(Seconds(resRate));
+
+		ApplicationContainer apps;
+		if(downlink)
+		{
+			apps = InstallApplications(NetDeviceContainer(relayDevice), m_clusterDevices[id]);
+		}
+		else
+		{
+			apps = InstallApplications(m_clusterDevices[id], NetDeviceContainer(relayDevice));
+		}
+
+		apps.Start(Seconds(0));
+		apps.Stop(Seconds(resRate));
+
+
+		Simulator::Run();
+		ClusterSleep(id, Now());
+
+		NetDeviceContainer devices = m_clusterDevices[id];
+		if(downlink)
+		{
+			Ipv4InterfaceAddress address;
+
+			Ptr<Ipv4> ipv4 = relayDevice->GetNode()->GetObject<Ipv4>();
+			address = ipv4->GetAddress(ipv4->GetInterfaceForDevice(relayDevice), 0);
+
+			std::pair<Time, uint64_t> pair = m_queueWaitRecord[relayDevice];
+			double time = pair.first.GetSeconds();
+			double items = pair.second;
+			double queueAvgWait = (items == 0 ? 0:time/items);
+
+			double enqueued = (double)m_queueEnqueueRecord[relayDevice];
+			double dropped = (double)m_queueDropRecord[relayDevice];
+			double requeued = (double)m_queueRequeueRecord[relayDevice];
+
+			double dropRate;
+			double requeueRate;
+			if(enqueued == 0)
+			{
+				NS_LOG_UNCOND("No packets queued!!!");
+				dropRate = 0;
+				requeueRate = 0;
+			}
+			else
+			{
+				dropRate = dropped/enqueued;
+				requeueRate = requeued/enqueued;
+			}
+
+			NS_LOG_LOGIC("RelayID " << id << "\n"
+					<< "RelayIP " << address.GetLocal() << "\n"
+					<< "AvgQueueWait " << queueAvgWait << "s\n"
+					<< "QueueDropRate " << 100*dropRate << "%\n"
+					<< "QueueRequeueRate " << 100*requeueRate << "%\n"
+					<< "ClusterDownlinkThroughput " << m_totalPhyTxBytes[relayDevice]/resRate/1.0e6 << "MB/s\n"
+			);
+
+			for(uint32_t i = 0; i < devices.GetN(); i++)
+			{
+				double throughput1 = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
+				double throughput2 = m_totalPhyRxBytes[devices.Get(i)]/resRate/1.0e6;
+
+				NS_LOG_LOGIC("ClientRX " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+						<< " " << throughput1 << "MB/s(data)"
+						<< " " << throughput2 << "MB/s(phy)\n"
+				);
+
+			}
+		}
+		else
+		{
+			for(uint32_t i = 0; i < devices.GetN(); i++)
+			{
+				NS_LOG_LOGIC("Client " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+				std::pair<Time, uint64_t> pair = m_queueWaitRecord[devices.Get(i)];
+				double time = pair.first.GetSeconds();
+				double items = pair.second;
+				double queueAvgWait = (items == 0 ? 0:time/items);
+
+				double enqueued = (double)m_queueEnqueueRecord[devices.Get(i)];
+				double dropped = (double)m_queueDropRecord[devices.Get(i)];
+				double requeued = (double)m_queueRequeueRecord[devices.Get(i)];
+
+				double dropRate;
+				double requeueRate;
+				if(enqueued == 0)
+				{
+					NS_LOG_UNCOND("No packets queued!!!");
+					dropRate = 0;
+					requeueRate = 0;
+				}
+				else
+				{
+					dropRate = dropped/enqueued;
+					requeueRate = requeued/enqueued;
+				}
+
+				NS_LOG_LOGIC("AvgQueueWait " << queueAvgWait << "s\n"
+						<< "QueueDropRate " << 100*dropRate << "%\n"
+						<< "QueueRequeueRate " << 100*requeueRate << "%"
+				);
+
+				double throughput1 = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
+				double throughput2 = m_totalPhyTxBytes[devices.Get(i)]/resRate/1.0e6;
+				NS_LOG_LOGIC("ThroughputTX " << throughput1 << "MB/s(data)"
+						<< " " << throughput2 << "MB/s(phy)\n");
+			}
+			NS_LOG_LOGIC("RelayRxThroughput " << m_packetsTotal[relayDevice]/resRate/1.0e6 << "MB/s(data) "
+					<< m_totalPhyRxBytes[relayDevice]/resRate/1.0e6 << "MB/s(phy)");
+
+		}
+		ResetStats();
+
+		if(downlink)
+			NS_LOG_LOGIC("--- Finished Running Downlink at Cluster " << id << " ---");
+		else
+			NS_LOG_LOGIC("--- Finished Running Uplink at Cluster " << id << " ---");
+
 	}
-
-      SetupHooks (NetDeviceContainer(relayDevice));
-      SetupHooks (m_clusterDevices[id]);
-//
-//      SetupPsr(m_clusterDevices[id], 1);
-//      SetupPsr(NetDeviceContainer(*rit), 1);
-
-      ClusterWakeup(id, Now());
-      while(!ClientsAssociated(id))
-	{
-	  Simulator::Stop(Seconds(10));
-	  Simulator::Run();
-	}
-      ResetStats();
-//
-//      SetupPsr(m_clusterDevices[id]);
-//      SetupPsr(NetDeviceContainer(*rit));
-      if(downlink)
-	NS_LOG_UNCOND("Downlink traffic started");
-      else
-	NS_LOG_UNCOND("Uplink traffic started");
-
-      Simulator::Stop(Seconds(resRate));
-
-      ApplicationContainer apps;
-      if(downlink)
-	{
-	  apps = InstallApplications(NetDeviceContainer(relayDevice), m_clusterDevices[id]);
-	}
-      else
-	{
-	  apps = InstallApplications(m_clusterDevices[id], NetDeviceContainer(relayDevice));
-	}
-      //		ApplicationContainer apps = InstallApplications(id);
-      apps.Start(Seconds(0));
-      apps.Stop(Seconds(resRate));
-
-
-      Simulator::Run();
-      ClusterSleep(id, Now());
-
-      NetDeviceContainer devices = m_clusterDevices[id];
-      if(downlink)
-      {
-    	  Ipv4InterfaceAddress address;
-
-    	  Ptr<Ipv4> ipv4 = relayDevice->GetNode()->GetObject<Ipv4>();
-    	  address = ipv4->GetAddress(ipv4->GetInterfaceForDevice(relayDevice), 0);
-
-    	  std::pair<Time, uint64_t> pair = m_queueWaitRecord[relayDevice];
-    	  double time = pair.first.GetSeconds();
-    	  double items = pair.second;
-    	  double queueAvgWait = (items == 0 ? 0:time/items);
-
-    	  double enqueued = (double)m_queueEnqueueRecord[relayDevice];
-    	  double dropped = (double)m_queueDropRecord[relayDevice];
-    	  double requeued = (double)m_queueRequeueRecord[relayDevice];
-
-    	  NS_ASSERT(enqueued);
-    	  double dropRate = dropped/enqueued;
-    	  double requeueRate = requeued/enqueued;
-    	  std::cout << "RelayID " << id << "\n"
-    			  << "RelayIP " << address.GetLocal() << "\n"
-				  << "AvgQueueWait " << queueAvgWait << "s\n"
-				  << "QueueDropRate " << 100*dropRate << "%\n"
-				  << "QueueRequeueRate " << 100*requeueRate << "%\n"
-				  << "ClusterDownlinkThroughput " << m_totalPhyTxBytes[relayDevice]/resRate/1.0e6 << "MB/s\n";
-    	  std::cout.flush();
-
-    	  for(uint32_t i = 0; i < devices.GetN(); i++)
-    	  {
-    		  std::cout << "ClientRX " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
-    		  double throughput = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
-    		  std::cout << " " << throughput << "MB/s(data)";
-    		  throughput = m_totalPhyRxBytes[devices.Get(i)]/resRate/1.0e6;
-    		  std::cout << " " << throughput << "MB/s(phy)\n";
-
-    		  std::cout.flush();
-    	  }
-    	  std::cout << std::endl;
-    	  NS_LOG_UNCOND("--- Finished Running Downlink at Cluster " << id << " ---");
-      }
-      else
-      {
-    	  for(uint32_t i = 0; i < devices.GetN(); i++)
-    	  {
-    		  std::cout << "Client " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
-					<< std::endl;
-    		  std::pair<Time, uint64_t> pair = m_queueWaitRecord[devices.Get(i)];
-    		  double time = pair.first.GetSeconds();
-    		  double items = pair.second;
-    		  double queueAvgWait = (items == 0 ? 0:time/items);
-
-        	  double enqueued = (double)m_queueEnqueueRecord[relayDevice];
-        	  double dropped = (double)m_queueDropRecord[relayDevice];
-        	  double requeued = (double)m_queueRequeueRecord[relayDevice];
-        	  NS_ASSERT(enqueued);
-    		  double dropRate = dropped/enqueued;
-    		  double requeueRate = requeued/enqueued;
-
-    		  std::cout << "AvgQueueWait " << queueAvgWait << "s\n"
-    				  << "QueueDropRate " << 100*dropRate << "%\n"
-					  << "QueueRequeueRate " << 100*requeueRate << "%\n";
-
-    		  double throughput = m_totalPhyTxBytes[devices.Get(i)]/resRate/1.0e6;
-    		  std::cout << "ThroughputTX " << throughput << "MB/s(data)";
-    		  Ptr<NetDevice> device = devices.Get(i);
-    		  std::cout << " " << throughput << "MB/s(phy)\n";
-    		  std::cout.flush();
-    	  }
-    	  std::cout << "RelayRxThroughput " << m_packetsTotal[relayDevice]/resRate/1.0e6 << "MB/s(data)"
-    			  << m_totalPhyRxBytes[relayDevice]/resRate/1.0e6 << "MB/s(phy)"<< std::endl;
-
-    	  NS_LOG_UNCOND("--- Finished Running Uplink at Cluster " << id << " ---");
-      }
-      ResetStats();
-
-
-      std::cout.flush();
-
-    }
 }
 
 void
@@ -1070,3 +1083,5 @@ Experiment::Destroy()
   Simulator::Destroy();
 }
 
+
+}
