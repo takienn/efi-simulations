@@ -46,9 +46,10 @@ ApWifimac uses two different types of queuing mechanism based on wether or not Q
 - ```Drop```: fired when a packet is droped from the queue.
 
 ### Usage
-```cpp
+```
 Ptr<ApWifiMac> mac = netdevice->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>();
 Ptr<WifiMacQueue> wifiMacQueue = mac->GetDcaTxop()->GetQueue();
+```
 
 ## Bug 4:
 This one is related to queue monitoring.
