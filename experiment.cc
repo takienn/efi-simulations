@@ -64,163 +64,74 @@ DisableActiveProbing(Ptr<StaWifiMac> staMac)
 	staMac->SetAttribute("ActiveProbing", BooleanValue(false));
 }
 
-void
-Experiment::LogDcaTxopEnqueueAction (Ptr<WifiMacQueueItem const> item)
+static void
+LogEnqueueAction (Experiment* experiment, Ptr<NetDevice> device, Ptr<WifiMacQueueItem const> item)
 {
-//	NS_LOG_INFO("DcaTxop Queue Enqueue action Item "<< item->GetPacket()->GetUid()
-//			<< " at " << Now().GetSeconds()
-//			<< std::endl);
+  experiment->UpdateQueueEnqueue(device);
 }
 
-void
-Experiment::LogDcaTxopDequeueAction (Ptr<WifiMacQueueItem const> item)
+static void
+LogDequeueAction (Experiment* experiment, Ptr<NetDevice> device, Ptr<WifiMacQueueItem const> item)
 {
-	Time waited = Now() - item->GetTimeStamp();
-//	NS_LOG_INFO("DcaTxop Queue Dequeue action at " << Now().GetSeconds()
-//			<< " Item " << item->GetPacket()->GetUid()
-//			<< " waited for " << waited.GetMicroSeconds() << "us"
-//			<< std::endl);
-
-//	m_queueWaitRecord["DcaTxop"] = std::pair<Time, uint64_t>(m_queueWaitRecord["DcaTxop"].first+waited, m_queueWaitRecord["DcaTxop"].second+1);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(m_queueWaitRecord[0].first+waited, m_queueWaitRecord[0].second+1);
+  Time waited = Now() - item->GetTimeStamp();
+  experiment->UpdateQueueWait(device, waited);
 
 }
 
-void
-Experiment::LogVO_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item)
+static void
+LogQueueDropAction (Experiment* experiment, Ptr<NetDevice> device, Ptr<WifiMacQueueItem const> item)
 {
-//	NS_LOG_INFO("VO_EdcaTxopN Queue Enqueue action Item "<< item->GetPacket()->GetUid()
-//			<< " at " << Now().GetSeconds()
-//			<< std::endl);
+  Time waited = Now() - item->GetTimeStamp();
+  experiment->UpdateQueueDrop(device, waited);
 }
 
 void
-Experiment::LogVO_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item)
+Experiment::SetupQueueMonitoring(Ptr<NetDevice> device)
 {
-	Time waited = Now() - item->GetTimeStamp();
-
-//	NS_LOG_INFO("VO_EdcaTxopN Queue Dequeue action at " << Now().GetSeconds()
-//			<< " Item " << item->GetPacket()->GetUid()
-//			<< " waited for " << (Now() - item->GetTimeStamp()).GetMicroSeconds() << "us"
-//			<< std::endl);
-
-//	m_queueWaitRecord["VO_EdcaTxopN"] = std::pair<Time, uint64_t>(m_queueWaitRecord["VO_EdcaTxopN"].first+waited, m_queueWaitRecord["VO_EdcaTxopN"].second+1);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(m_queueWaitRecord[0].first+waited, m_queueWaitRecord[0].second+1);
-
-}
-
-void
-Experiment::LogVI_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item)
-{
-	NS_LOG_INFO("VI_EdcaTxopN Queue Enqueue action Item "<< item->GetPacket()->GetUid()
-			<< " at " << Now().GetSeconds()
-			<< std::endl);
-
-}
-
-void
-Experiment::LogVI_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item)
-{
-	Time waited = Now() - item->GetTimeStamp();
-
-	NS_LOG_INFO("VI_EdcaTxopN Queue Dequeue action at " << Now().GetSeconds()
-			<< " Item " << item->GetPacket()->GetUid()
-			<< " waited for " << (Now() - item->GetTimeStamp()).GetMicroSeconds() << "us"
-			<< std::endl);
-
-//	m_queueWaitRecord["VI_EdcaTxopN"] = std::pair<Time, uint64_t>(m_queueWaitRecord["VI_EdcaTxopN"].first+waited, m_queueWaitRecord["VI_EdcaTxopN"].second+1);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(m_queueWaitRecord[0].first+waited, m_queueWaitRecord[0].second+1);
-
-}
-void
-Experiment::LogBE_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item)
-{
-//	NS_LOG_INFO("BE_EdcaTxopN Queue Enqueue action Item "<< item->GetPacket()->GetUid()
-//			<< " at " << Now().GetSeconds()
-//			<< std::endl);
-}
-
-void
-Experiment::LogBE_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item)
-{
-	Time waited = Now() - item->GetTimeStamp();
-
-//	NS_LOG_INFO("BE_EdcaTxopN Queue Dequeue action at " << Now().GetSeconds()
-//			<< " Item " << item->GetPacket()->GetUid()
-//			<< " waited for " << (Now() - item->GetTimeStamp()).GetMicroSeconds() << "us"
-//			<< std::endl);
-
-//	m_queueWaitRecord["BE_EdcaTxopN"] = std::pair<Time, uint64_t>(m_queueWaitRecord["BE_EdcaTxopN"].first+waited, m_queueWaitRecord["BE_EdcaTxopN"].second+1);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(m_queueWaitRecord[0].first+waited, m_queueWaitRecord[0].second+1);
-
-}
-void
-Experiment::LogBK_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item)
-{
-	NS_LOG_INFO("BK_EdcaTxopN Queue Enqueue action Item "<< item->GetPacket()->GetUid()
-			<< " at " << Now().GetSeconds()
-			<< std::endl);
-}
-
-void
-Experiment::LogBK_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item)
-{
-	Time waited = Now() - item->GetTimeStamp();
-
-	NS_LOG_INFO("BK_EdcaTxopN Queue Dequeue action" << " Item " << item->GetPacket()->GetUid()
-			<<" at " << Now().GetSeconds()
-			<< " waited for " << (Now() - item->GetTimeStamp()).GetMicroSeconds() << "us"
-			<< std::endl);
-
-//	m_queueWaitRecord["BK_EdcaTxopN"] = std::pair<Time, uint64_t>(m_queueWaitRecord["BE_EdcaTxopN"].first+waited, m_queueWaitRecord["BE_EdcaTxopN"].second+1);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(m_queueWaitRecord[0].first+waited, m_queueWaitRecord[0].second+1);
-
-}
-
-void
-Experiment::SetupQueueMonitoring(Ptr<ApWifiMac> mac)
-{
+  Ptr<RegularWifiMac> mac = device->GetObject<WifiNetDevice>()->GetMac()->GetObject<RegularWifiMac>();
 	PointerValue ptr;
 	Ptr<WifiMacQueue> wifiMacQueue;
 
 	mac->GetAttribute("DcaTxop", ptr);
 	wifiMacQueue = ptr.GetObject()->GetObject<DcaTxop>()->GetQueue();
-	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeCallback(&Experiment::LogDcaTxopEnqueueAction, this));
-	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeCallback(&Experiment::LogDcaTxopDequeueAction, this));
+	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeBoundCallback(&LogEnqueueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeBoundCallback(&LogDequeueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Drop", MakeBoundCallback(&LogQueueDropAction, this, device));
+
 //	m_queueWaitRecord["DcaTxop"] = std::pair<Time, uint64_t>(Seconds(0),0);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(Seconds(0),0);
+	m_queueWaitRecord[device] = std::pair<Time, uint64_t>(Seconds(0),0);
 
 
 	mac->GetAttribute("BK_EdcaTxopN", ptr);
 	wifiMacQueue = ptr.GetObject()->GetObject<EdcaTxopN>()->GetQueue();
-	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeCallback(&Experiment::LogBK_EdcaTxopNEnqueueAction, this));
-	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeCallback(&Experiment::LogBK_EdcaTxopNDequeueAction, this));
+	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeBoundCallback(&LogEnqueueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeBoundCallback(&LogDequeueAction, this, device));
 //	m_queueWaitRecord["BK_EdcaTxopN"] = std::pair<Time, uint64_t>(Seconds(0),0);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(Seconds(0),0);
+	m_queueWaitRecord[device] = std::pair<Time, uint64_t>(Seconds(0),0);
 
 
 	mac->GetAttribute("VI_EdcaTxopN", ptr);
 	wifiMacQueue = ptr.GetObject()->GetObject<EdcaTxopN>()->GetQueue();
-	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeCallback(&Experiment::LogVI_EdcaTxopNEnqueueAction, this));
-	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeCallback(&Experiment::LogVI_EdcaTxopNDequeueAction, this));
+	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeBoundCallback(&LogEnqueueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeBoundCallback(&LogDequeueAction, this, device));
 //	m_queueWaitRecord["VI_EdcaTxopN"] = std::pair<Time, uint64_t>(Seconds(0),0);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(Seconds(0),0);
+	m_queueWaitRecord[device] = std::pair<Time, uint64_t>(Seconds(0),0);
 
 
 	mac->GetAttribute("VO_EdcaTxopN", ptr);
 	wifiMacQueue = ptr.GetObject()->GetObject<EdcaTxopN>()->GetQueue();
-	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeCallback(&Experiment::LogVO_EdcaTxopNEnqueueAction, this));
-	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeCallback(&Experiment::LogVO_EdcaTxopNDequeueAction, this));
+	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeBoundCallback(&LogEnqueueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeBoundCallback(&LogDequeueAction, this, device));
 //	m_queueWaitRecord["VO_EdcaTxopN"] = std::pair<Time, uint64_t>(Seconds(0),0);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(Seconds(0),0);
+	m_queueWaitRecord[device] = std::pair<Time, uint64_t>(Seconds(0),0);
 
 
 	mac->GetAttribute("BE_EdcaTxopN", ptr);
 	wifiMacQueue = ptr.GetObject()->GetObject<EdcaTxopN>()->GetQueue();
-	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeCallback(&Experiment::LogBE_EdcaTxopNEnqueueAction, this));
-	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeCallback(&Experiment::LogBE_EdcaTxopNDequeueAction, this));
+	wifiMacQueue->TraceConnectWithoutContext("Enqueue", MakeBoundCallback(&LogEnqueueAction, this, device));
+	wifiMacQueue->TraceConnectWithoutContext("Dequeue", MakeBoundCallback(&LogDequeueAction, this, device));
 //	m_queueWaitRecord["BE_EdcaTxopN"] = std::pair<Time, uint64_t>(Seconds(0),0);
-	m_queueWaitRecord[0] = std::pair<Time, uint64_t>(Seconds(0),0);
+	m_queueWaitRecord[device] = std::pair<Time, uint64_t>(Seconds(0),0);
 
 }
 
@@ -381,8 +292,6 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 		{
 			m_relayApIpAddress[0].Assign(device);
 		}
-
-		SetupReceivePacket(device.Get(0));
 	}
 	else switch(type)
 	{
@@ -455,12 +364,6 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 			m_clusterIpAddress[node->GetId()].Assign(device);
 		}
 //
-		Ptr<ApWifiMac> mac = device.Get(0)->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>();
-		SetupQueueMonitoring(mac);
-
-//		Ptr<WifiPhy> phy = device.Get(0)->GetObject<WifiNetDevice>()->GetPhy();
-//		phy->TraceConnectWithoutContext("MonitorSnifferTx", MakeCallback(&Experiment::MonitorPhyTx, this));
-
 		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(48));
 		ss.str("");
 		ss << "MasterAP" << relayId;
@@ -632,52 +535,7 @@ Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 		uint32_t id = (*it)->GetId();
 
 		ClusterSleep(id, Now());
-
-//		if(id==7)
-//		{
-//			Ptr<ApWifiMac> mac = (*it)->GetObject<WifiNetDevice>()->GetMac()->GetObject<ApWifiMac>();
-//			mac->SetAttribute("BeaconGeneration", BooleanValue(true));
-//			break;
-//
-//		}
-//		double resRate = m_relayResourceMap[id];
-//
-//		ClusterSleep(id, Seconds(0));
-//
-//		ClusterWakeup(id, Seconds(m_usedResources+20));
-//		ClusterSleep(id, Seconds(m_usedResources+20 + resRate));
-//
-//		NetDeviceContainer src = NetDeviceContainer(*it);
-//		Ptr<Node> node = (*it)->GetNode();
-//		NetDeviceContainer dst = m_clusterDevices[node->GetId()];
-//		InstallApplications(src, dst, Seconds(m_usedResources+40), Seconds(m_usedResources+20 + resRate));
-//
-//		m_usedResources += resRate;
 	}
-
-//	for(NetDeviceContainer::Iterator it = m_relayClusterDevice.Begin(); it!= m_relayClusterDevice.End(); it++)
-//	{
-//		double resRate = m_relayResourceMap[id];
-//		double duration = m_totalResources*resRate/100;
-//
-//
-//		Ptr<UniformRandomVariable> rand = CreateObject<UniformRandomVariable>();
-//		Ptr<WifiPhy> staPhy = DynamicCast<WifiNetDevice> (*it)->GetPhy ();
-//
-//		Simulator::Schedule (Seconds(rand->GetValue(0,10)),
-//				&WifiPhy::ResumeFromSleep, staPhy);
-//
-//		NetDeviceContainer src = NetDeviceContainer(*it);
-//		Ptr<Node> node = (*it)->GetNode();
-//		NetDeviceContainer dst = m_clusterDevices[node->GetId()];
-//		double timeStart = m_remainingResource - duration + (g_simTime - m_totalResources);
-//		double timeStop = m_remainingResource + (g_simTime - m_totalResources);
-//		InstallApplications(src, dst, Seconds(timeStart), Seconds(timeStop));
-//
-//		m_remainingResource -= duration;
-//	}
-
-
 	Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelWidth", UintegerValue (20));
 	m_clusterIpAddress.clear();
 	m_relayApIpAddress.clear();
@@ -697,10 +555,8 @@ Experiment::SetupReceivePacket (Ptr<NetDevice> device)
 	sink->SetAllowBroadcast(true);
 
 	sink->Bind (local);
-//	sink->BindToNetDevice(device);
+	sink->BindToNetDevice(device);
 	sink->SetRecvCallback (MakeCallback ( &Experiment::ReceivePacket, this));
-
-//	m_packetsTotal[device] = 0;
 }
 
 void Experiment::LogBusy (Time start, Time duration, WifiPhy::State state)
@@ -753,13 +609,14 @@ Experiment::ReceivePacket (Ptr <Socket> socket)
 	while (packet = socket->Recv ())
 	{
 //		Ipv4Address ipaddr =  GetIpv4OfMac48(device->GetObject<WifiNetDevice>()->GetMac()->GetObject<StaWifiMac>()->GetAddress()).GetLocal();
-		m_packetsTotal[device] += packet->GetSize();
+	    if(m_rand->GetValue() > 1 - m_nodePsrValues[device->GetNode()->GetId()])//TODO
+	      m_packetsTotal[device] += packet->GetSize();
 	}
 }
 
 //TODO This install an app sending traffic from every netdevice in src to every netdevice in dst
 ApplicationContainer
-Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst, Time start, Time stop)
+Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst)
 {
 
 	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -773,25 +630,17 @@ Experiment::InstallApplications (NetDeviceContainer src, NetDeviceContainer dst,
 		Ipv4InterfaceAddress addr_dst = ipv4_dst->GetInterface(ipv4_dst->GetInterfaceForDevice(*it2))->GetAddress(0);
 
 		Ptr<Ipv4L3Protocol> ipv4_src = (*it1)->GetNode()->GetObject<Ipv4L3Protocol> ();
-		Ipv4InterfaceAddress addr_src = ipv4_src->GetInterface(ipv4_src->GetInterfaceForDevice(*it1))->GetAddress(0);
+//		Ipv4InterfaceAddress addr_src = ipv4_src->GetInterface(ipv4_src->GetInterfaceForDevice(*it1))->GetAddress(0);
 
 		OnOffHelper onoff ("ns3::UdpSocketFactory",
 				Address (InetSocketAddress (addr_dst.GetLocal(), port))); // TODO Send traffic to AP?
 		onoff.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
 		onoff.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
 		onoff.SetAttribute ("PacketSize", UintegerValue(1472)); // Total IP packet size of 1500
-		onoff.SetConstantRate(DataRate("1Gbps"));
+		onoff.SetConstantRate(DataRate("150Mbps"));
 		apps.Add(onoff.Install((*it1)->GetNode()));
-
-		NS_LOG_INFO("address " << addr_src.GetLocal() << " will send packets to address " << addr_dst.GetLocal()
-				<< " From " << start.GetSeconds() << "s to " << stop.GetSeconds() << " for " << (stop - start).GetSeconds()
-				<< "s" << std::endl);
-
 	      }
 	}
-
-	apps.Start (start);
-	apps.Stop (stop);
 
 	return apps;
 }
@@ -832,31 +681,53 @@ Experiment::InstallApplications(uint32_t relayId)
 		onoff.SetAttribute ("PacketSize", UintegerValue(1472)); // Total IP packet size of 1500
 		onoff.SetConstantRate(DataRate("150Mbps"));
 		apps.Add(onoff.Install(relayDevice->GetNode()));
-
-//		NS_LOG_INFO("address " << addr_src.GetLocal() << " will send packets to address " << addr_dst.GetLocal()
-//				<< " From " << start.GetSeconds() << " to " << stop.GetSeconds() << " for " << (stop - start).GetSeconds()
-//				<< std::endl);
 	}
 
 	return apps;
 }
 
-void
-Experiment::MonitorPhyTx (Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu)
+static void
+MonitorPhyTx (Experiment* experiment, Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu)
 {
-	m_totalPhyTxBytes += packet->GetSize();
+  experiment->UpdatePhyTxBytes(device, packet->GetSize());
 }
 
 void
 EnableBroadcast(Ptr<Application> app)
 {
-	Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(app);
+  Ptr<OnOffApplication> onoffApp = DynamicCast<OnOffApplication>(app);
     Ptr<Socket> socket = onoffApp->GetSocket();
     socket->SetAllowBroadcast(true);
 }
 
+void
+Experiment::UpdatePhyTxBytes(Ptr<NetDevice> device, double value)
+{
+  m_totalPhyTxBytes[device] += value;
+}
+
+void
+Experiment::UpdateQueueWait(Ptr<NetDevice> device, Time time)
+{
+  m_queueWaitRecord[device].first += time;
+  m_queueWaitRecord[device].second++;
+}
+
+void
+Experiment::UpdateQueueDrop(Ptr<NetDevice> device, Time time)
+{
+  m_queueDropRecord[device].first += time;
+  m_queueDropRecord[device].second++;
+}
+
+void
+Experiment::UpdateQueueEnqueue(Ptr<NetDevice> device)
+{
+  m_queueEnqueueRecord[device]++;
+}
+
 ApplicationContainer
-Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address, Time start, Time stop)
+Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address)
 {
 
 	Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -886,9 +757,6 @@ Experiment::InstallApplications (NetDeviceContainer src, Ipv4Address address, Ti
 
 	  }
 
-	apps.Start (start);
-	apps.Stop (stop);
-
 	return apps;
 }
 
@@ -904,7 +772,6 @@ void Experiment::Initialize ()
 	channelHelper.SetChannel("ns3::MultiModelSpectrumChannel");
 	m_channel = channelHelper.Create();
 
-	m_totalPhyTxBytes = 0;
 	m_rand = CreateObject<UniformRandomVariable>();
 }
 
@@ -956,9 +823,11 @@ NetDeviceContainer Experiment::GetNetDevices(NodeSpec::NodeType type) const
 void
 Experiment::ResetStats()
 {
-	m_totalPhyTxBytes = 0;
+	m_totalPhyTxBytes.clear();
 	m_packetsTotal.clear();
 	m_queueWaitRecord.clear();
+	m_queueEnqueueRecord.clear();
+	m_queueDropRecord.clear();
 }
 
 
@@ -973,147 +842,189 @@ Experiment::ClientsAssociated (uint32_t id)
 }
 
 void
-Experiment::SetupHooks (uint32_t id)
+Experiment::SetupHooks (NetDeviceContainer devices)
 {
-	NetDeviceContainer devices = m_clusterDevices[id];
 	for(uint32_t i = 0; i < devices.GetN(); i++)
 	{
-		Ptr<StaWifiMac> mac = devices.Get(i)->GetObject<WifiNetDevice> ()->GetMac()->GetObject<StaWifiMac> ();
-//		UintegerValue oldVal, newVal;
-//		mac->GetAttribute("MaxMissedBeacons", oldVal);
-		mac->SetAttribute("MaxMissedBeacons", UintegerValue(1000));
-//		mac->GetAttribute("MaxMissedBeacons", newVal);
-//		std::cout<< "MaxMissedBeacons was " << oldVal.Get() << " and became " << newVal.Get() << " for client " << GetIpv4OfMac48(mac->GetAddress()).GetLocal() << std::endl;
-//
-		mac->TraceConnectWithoutContext("DeAssoc", MakeCallback(&Experiment::LogDeAssoc, this));
-		mac->TraceConnectWithoutContext("Assoc", MakeCallback(&Experiment::LogAssoc, this));
+		Ptr<RegularWifiMac> mac = devices.Get(i)->GetObject<WifiNetDevice> ()->GetMac()->GetObject<RegularWifiMac> ();
+		if(mac->GetObject<StaWifiMac>())
+		  {
+		    mac->SetAttribute("MaxMissedBeacons", UintegerValue(100000));
+		    mac->TraceConnectWithoutContext("DeAssoc", MakeCallback(&Experiment::LogDeAssoc, this));
+		    mac->TraceConnectWithoutContext("Assoc", MakeCallback(&Experiment::LogAssoc, this));
 
-//		EnableActiveProbing (mac);
+		  }
+
+		SetupQueueMonitoring(devices.Get(i));
+
+		Ptr<WifiPhy> phy = devices.Get(i)->GetObject<WifiNetDevice>()->GetPhy();
+		phy->TraceConnectWithoutContext("MonitorSnifferTx", MakeBoundCallback(&MonitorPhyTx, this, devices.Get(i)));
 
 		SetupReceivePacket(devices.Get(i));
 	}
+
 }
 
 void
-Experiment::Run(int argc, char *argv[])
+Experiment::SetupPsr(NetDeviceContainer devices, double val = 2)
 {
-	std::cout.flush();
+  for(uint32_t i = 0; i < devices.GetN(); i++)
+    {
+      Ptr<WifiPhy> phy = devices.Get(i)->GetObject<WifiNetDevice>()->GetPhy();
+      Ptr<PsrErrorRateModel> err = CreateObject<PsrErrorRateModel> ();
+      double psr = m_nodePsrValues[devices.Get(i)->GetNode()->GetId()];
+      if(val>1)
+	err->SetRate(psr);
+      else
+	err->SetRate(val);
+      phy->SetErrorRateModel(err);
+    }
+}
+void
+Experiment::Run(bool downlink)
+{
+  std::cout.flush();
 
-//	long int time = static_cast<long int>(std::time(nullptr));
+  Simulator::Schedule(Now(), &SimulationProgress);
+  for(NetDeviceContainer::Iterator rit = m_relayClusterDevice.Begin(); rit!= m_relayClusterDevice.End(); rit++)
+    {
+      uint32_t id = (*rit)->GetNode()->GetId();
+      double resRate = m_relayResourceMap[id]; // Apparently total 100 seconds is not enough
 
-//	std::string animFile = "animation-";
-//	animFile.append(std::to_string(time).c_str());
-//	animFile.append(".xml");
-
-	CommandLine cmd;
-	cmd.AddValue("simTime","Simulation Time", g_simTime);
-//	cmd.AddValue("animFile","Animation xml filename", animFile);
-
-	Simulator::Schedule(Now(), &SimulationProgress);
-	for(NetDeviceContainer::Iterator rit = m_relayClusterDevice.Begin(); rit!= m_relayClusterDevice.End(); rit++)
+      std::cout << "\n--- Running Downlink at Cluster " << id << " Resources " << resRate << "s ---\n";
+      std::cout.flush();
+      std::cout << "Clients in this cluster\n";
+      std::cout.flush();
+      NodeContainer nodes = m_clusterNodes[id];
+      for(uint32_t i = 0; i < nodes.GetN(); i++)
 	{
-		uint32_t id = (*rit)->GetNode()->GetId();
-		double resRate = m_relayResourceMap[id]; // Apparently total 100 seconds is not enough
-
-		std::cout << "\n--- Running Downlink at Cluster " << id << " Resources " << resRate << "s ---\n";
-		std::cout.flush();
-		std::cout << "Clients in this cluster\n";
-		std::cout.flush();
-		NodeContainer nodes = m_clusterNodes[id];
-		for(uint32_t i = 0; i < nodes.GetN(); i++)
-		{
-			Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
-			std::cout << ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[nodes.Get(i)->GetId()] << "\n";
-			std::cout.flush();
-		}
-
-		SetupHooks (id);
-		ClusterWakeup(id, Now());
-//		ApplicationContainer apps = InstallApplications(id);
-		while(!ClientsAssociated(id))
-		{
-//			apps.Start(Now());
-//			apps.Stop(Now() + Seconds(10));
-			Simulator::Stop(Seconds(10));
-			Simulator::Run();
-		}
-		ResetStats();
-		NS_LOG_UNCOND("Downlink traffic started");
-		Simulator::Stop(Seconds(resRate));
-
-		ApplicationContainer apps = InstallApplications(id);
-		apps.Start(Seconds(0));
-		apps.Stop(Seconds(resRate));
-
-
-		Simulator::Run();
-		ClusterSleep(id, Now());
-
-
-		Ptr<NetDevice> device;
-		Ipv4InterfaceAddress address;
-		std::cout << "Relay ID\t\tIP Address\t\tAvg Queue Wait";
-		std::cout.flush();
-		NetDeviceContainer devices = m_clusterDevices[id];
-		for(uint32_t i = 0; i < devices.GetN(); i++)
-		{
-			device = devices.Get(i);
-			address = device->GetNode()->GetObject<Ipv4>()->GetAddress(1, 0);
-			std::cout << "\t\tThroughput for " << address.GetLocal();
-			std::cout.flush();
-		}
-		device = *rit;
-		Ptr<Ipv4> ipv4 = device->GetNode()->GetObject<Ipv4>();
-		address = ipv4->GetAddress(ipv4->GetInterfaceForDevice(device), 0);
-
-
-		std::cout << std::endl;
-		std::cout << id << "\t\t\t" << address.GetLocal() << "\t\t";
-		std::cout.flush();
-
-		std::pair<Time, uint64_t> pair = m_queueWaitRecord[0];
-		double queueAvgWait = pair.first.GetSeconds();
-		double queueTotalItems = pair.second;
-		std::cout << (queueTotalItems == 0 ? 0:queueAvgWait/queueTotalItems) <<"s";
-		std::cout.flush();
-
-		for(uint32_t i = 0; i < devices.GetN(); i++)
-		{
-			device = devices.Get(i);
-			double throughput = m_packetsTotal[device]/resRate/1.0e6;
-			std::cout << "\t\t\t" << throughput << "MBytes/s";
-			std::cout.flush();
-		}
-		std::cout << std::endl;
-
-//		std::cout << "Total cluster downlink Throughput " << m_totalPhyTxBytes/resRate/1e6 << " MBytes/s" << std::endl;
-
-//		for(std::map<std::string, std::pair<Time, uint64_t> >::iterator it = m_queueWaitRecord.begin(); it != m_queueWaitRecord.end(); it++)
-//		{
-//			std::string queueType = it->first;
-//			double queueAvgWait = it->second.first.GetMicroSeconds();
-//			double queueTotalItems = it->second.second;
-//			if(queueTotalItems)
-//			{
-//				double avgWait = queueAvgWait/queueTotalItems;
-//				std::cout << it->first.c_str() << "Queue average wait time is " << avgWait <<"us" << std::endl;
-//			}
-//		}
-
-		ResetStats();
-
-		std::cout << "--- Finished Running Downlink at Cluster " << id << " ---";
-		std::cout.flush();
-
+	  Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
+	  std::cout << ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[nodes.Get(i)->GetId()] << "\n";
+	  std::cout.flush();
 	}
 
+      SetupHooks (*rit);
+      SetupHooks (m_clusterDevices[id]);
+//
+//      SetupPsr(m_clusterDevices[id], 1);
+//      SetupPsr(NetDeviceContainer(*rit), 1);
+
+      ClusterWakeup(id, Now());
+      while(!ClientsAssociated(id))
+	{
+	  Simulator::Stop(Seconds(10));
+	  Simulator::Run();
+	}
+      ResetStats();
+//
+//      SetupPsr(m_clusterDevices[id]);
+//      SetupPsr(NetDeviceContainer(*rit));
+      if(downlink)
+	NS_LOG_UNCOND("Downlink traffic started");
+      else
+	NS_LOG_UNCOND("Uplink traffic started");
+
+      Simulator::Stop(Seconds(resRate));
+
+      Ptr<NetDevice> relayDevice = NodeList::GetNode(id)->GetDevice(1);
+      ApplicationContainer apps;
+      if(downlink)
+	{
+	  apps = InstallApplications(NetDeviceContainer(relayDevice), m_clusterDevices[id]);
+	}
+      else
+	{
+	  apps = InstallApplications(m_clusterDevices[id], NetDeviceContainer(relayDevice));
+	}
+      //		ApplicationContainer apps = InstallApplications(id);
+      apps.Start(Seconds(0));
+      apps.Stop(Seconds(resRate));
 
 
+      Simulator::Run();
+      ClusterSleep(id, Now());
+
+      NetDeviceContainer devices = m_clusterDevices[id];
+      if(downlink)
+	{
+	  Ipv4InterfaceAddress address;
+
+	  Ptr<NetDevice> device = *rit;
+	  Ptr<Ipv4> ipv4 = device->GetNode()->GetObject<Ipv4>();
+	  address = ipv4->GetAddress(ipv4->GetInterfaceForDevice(device), 0);
+
+	  std::pair<Time, uint64_t> pair = m_queueWaitRecord[device];
+	  double time = pair.first.GetSeconds();
+	  double items = pair.second;
+	  double queueAvgWait = (items == 0 ? 0:time/items);
+
+	  pair = m_queueDropRecord[device];
+	  time = pair.first.GetSeconds();
+	  items = pair.second;
+	  double queueAvgDropTime = (items == 0 ? 0:time/items);
+
+	  uint64_t droped = m_queueEnqueueRecord[device];
+	  double dropRate = items/droped;
+	  std::cout << "RelayID " << id << "\n"
+	      << "RelayIP " << address.GetLocal() << "\n"
+	      << "AvgQueueWait " << queueAvgWait << "s\n"
+	      << "AvgQueueDropTime " << queueAvgDropTime << "s\n"
+	      << "QueueDropRate " << 100*dropRate << "%\n"
+	      << "ClusterDownlinkThroughput " << m_totalPhyTxBytes[*rit]/resRate/1.0e6 << "MB/s\n";
+	  std::cout.flush();
+
+	  for(uint32_t i = 0; i < devices.GetN(); i++)
+	    {
+	      std::cout << "ThroughputClient " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal();
+	      double throughput = m_packetsTotal[devices.Get(i)]/resRate/1.0e6;
+	      std::cout << " " << throughput << "MB/s\n";
+	      std::cout.flush();
+	    }
+	  std::cout << std::endl;
+	  NS_LOG_UNCOND("--- Finished Running Downlink at Cluster " << id << " ---");
+	}
+      else
+	{
+	  for(uint32_t i = 0; i < devices.GetN(); i++)
+	    {
+	      std::cout << "Client " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+			<< std::endl;
+	      std::pair<Time, uint64_t> pair = m_queueWaitRecord[devices.Get(i)];
+	      double time = pair.first.GetSeconds();
+	      double items = pair.second;
+	      double queueAvgWait = (items == 0 ? 0:time/items);
+
+	      pair = m_queueDropRecord[devices.Get(i)];
+	      time = pair.first.GetSeconds();
+	      items = pair.second;
+	      double queueAvgDropTime = (items == 0 ? 0:time/items);
+
+	      uint64_t droped = m_queueEnqueueRecord[devices.Get(i)];
+	      double dropRate = items/droped;
+	      std::cout << "AvgQueueWait " << queueAvgWait << "s\n";
+	      std::cout << "AvgQueueDropTime " << queueAvgDropTime << "s\n";
+	      std::cout << "QueueDropRate " << 100*dropRate << "%\n";
+	      double throughput = m_totalPhyTxBytes[devices.Get(i)]/resRate/1.0e6;
+	      std::cout << "Throughput " << throughput << "MB/s\n";
+	      Ptr<NetDevice> device = devices.Get(i);
+	      std::cout << " " << throughput << "MB/s\n";
+	      std::cout.flush();
+	    }
+	  std::cout << "RelayRxThroughput " << m_packetsTotal[*rit]/resRate/1.0e6 << "MB/s"
+		    << std::endl;
+
+	  NS_LOG_UNCOND("--- Finished Running Uplink at Cluster " << id << " ---");
+	}
+      ResetStats();
 
 
-	Simulator::Destroy();
+      std::cout.flush();
 
-	//  std::cout << experiment.GetPacketsTotal().size() << std::endl;
+    }
 
+
+  Simulator::Destroy();
 }
+
+
 

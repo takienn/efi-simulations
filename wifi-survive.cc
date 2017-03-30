@@ -32,16 +32,14 @@ int main (int argc, char *argv[])
 
 	for(std::vector<std::vector<NodeSpec> >::iterator it = nodesList.begin(); it != nodesList.end(); it++)
 	  {
-//	    NodeSpec nodeSpec =   NodeSpec (0, NodeSpec::AP, Vector3D(0,0,0), 0);
-//	    it->push_back(nodeSpec);
-
 		std::cout << "--------- Running new experiment ---------" << std::endl;
 		std::cout.flush();
 
 	    Experiment experiment;
 	    experiment.CreateNodes(*it, efiActive);
-	    experiment.Run(argc, argv);
-//	    break;
+	    experiment.Run(true);
+	    experiment.Run(false);
+
 	  }
 
 	return 0;

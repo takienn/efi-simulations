@@ -37,8 +37,8 @@ public:
 //  NetDeviceContainer CreateMasterAp();
 //  void ConnectStaToAp (NodeContainer stas, NodeContainer ap, Ssid ssid = Ssid ("MasterAP"), uint32_t channelNumber = 0);
 
-  ApplicationContainer InstallApplications (NetDeviceContainer src, NetDeviceContainer dst, Time start, Time stop);
-  ApplicationContainer InstallApplications (NetDeviceContainer src, Ipv4Address address, Time start, Time stop);
+  ApplicationContainer InstallApplications (NetDeviceContainer src, NetDeviceContainer dst);
+  ApplicationContainer InstallApplications (NetDeviceContainer src, Ipv4Address address);
   ApplicationContainer InstallApplications (uint32_t relayId);
 
   NodeContainer GetNodes (NodeSpec::NodeType type) const;
@@ -47,9 +47,14 @@ public:
   void ClusterWakeup(uint32_t id, Time time);
   void ClusterSleep(uint32_t id, Time time);
 
-  void Run(int argc, char *argv[]);
+  void Run(bool downlink = true);
 
   void ResetStats();
+
+  void UpdatePhyTxBytes(Ptr<NetDevice>, double value);
+  void UpdateQueueWait(Ptr<NetDevice> device, Time time);
+  void UpdateQueueDrop(Ptr<NetDevice> device, Time time);
+  void UpdateQueueEnqueue(Ptr<NetDevice> device);
 
 private:
   void Initialize ();
@@ -62,29 +67,17 @@ private:
 
   bool ClientsAssociated(uint32_t id);
 
-
-  void LogDcaTxopEnqueueAction (Ptr<WifiMacQueueItem const> item);
-  void LogBE_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item);
-  void LogBK_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item);
-  void LogVO_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item);
-  void LogVI_EdcaTxopNEnqueueAction (Ptr<WifiMacQueueItem const> item);
-
-  void LogDcaTxopDequeueAction (Ptr<WifiMacQueueItem const> item);
-  void LogBE_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item);
-  void LogBK_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item);
-  void LogVO_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item);
-  void LogVI_EdcaTxopNDequeueAction (Ptr<WifiMacQueueItem const> item);
-
   void LogAssoc(Mac48Address sta, Mac48Address addr);
   void LogDeAssoc(Mac48Address sta, Mac48Address addr);
 
   void LogBusy (Time start, Time duration, WifiPhy::State state);
 
-  void MonitorPhyTx(Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu);
-  void SetupQueueMonitoring(Ptr<ApWifiMac> mac);
+//  void MonitorPhyTx(Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu);
+  void SetupQueueMonitoring(Ptr<NetDevice> device);
   void EnableActiveProbing(Ptr<StaWifiMac> mac);
-  void SetupHooks (uint32_t id);
+  void SetupHooks (NetDeviceContainer devices);
 
+  void SetupPsr(NetDeviceContainer devices, double val);
   Ptr<SpectrumChannel> m_channel; // SpectrumChannel used across the whole simulation
   NetDeviceContainer m_apDevice;
   std::map<uint32_t, NetDeviceContainer> m_clusterDevices;
@@ -97,8 +90,10 @@ private:
   std::map<uint32_t, NodeContainer> m_clusterNodes;
 
   std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
-  uint64_t m_totalPhyTxBytes;
-  std::map<uint32_t, std::pair<Time, uint64_t> > m_queueWaitRecord;
+  std::map<Ptr<NetDevice>, uint64_t> m_totalPhyTxBytes;
+  std::map<Ptr<NetDevice> , uint64_t> m_queueEnqueueRecord;
+  std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueWaitRecord;
+  std::map<Ptr<NetDevice>, std::pair<Time, uint64_t> > m_queueDropRecord;
 
   std::map<uint32_t, double> m_nodePsrValues;
 
