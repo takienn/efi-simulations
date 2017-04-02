@@ -24,11 +24,14 @@ int main (int argc, char *argv[])
 	bool downlink = true;
 	bool uplink = true;
 
+	std::string inputfile = "scratch/NS3Input.txt";
 	CommandLine cmd;
 	cmd.AddValue("efiActive", "normal or Efi mode", efiActive);
 	cmd.AddValue("totalResources", "Total Resources (s)", totResources);
 	cmd.AddValue("downlink", "Total Resources (s)", downlink);
 	cmd.AddValue("uplink", "Total Resources (s)", uplink);
+	cmd.AddValue("inputfile", "Input File", inputfile);
+
 
 	cmd.Parse(argc, argv);
 

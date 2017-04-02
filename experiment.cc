@@ -241,7 +241,7 @@ Experiment::ClusterSleep(uint32_t id, Time time)
 	}
 }
 void
-Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate, bool efiActive)
+Experiment::SetupEfiNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate)
 {
 	WifiHelper wifiHelper;
 	wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
@@ -276,35 +276,8 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 
 	internet.Install(node);
 
-	if(!efiActive)
-	{
-		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(48));
-		std::stringstream ss;
-		Ssid ssid;
-		ss.str("");
-		ss << "MasterAP" << 0;
-		ssid = Ssid (ss.str());
 
-		macHelper.SetType ("ns3::StaWifiMac",
-				"Ssid", SsidValue (ssid),
-				"BE_MaxAmpduSize", UintegerValue(0)); //Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
-		NetDeviceContainer device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
-		m_clusterDevices[0].Add(device);
-
-		if(m_clusterIpAddress.count(0) == 0)
-		{
-			Ipv4AddressHelper addressHelper;
-
-			addressHelper.SetBase(Ipv4Address("10.0.0.0"), Ipv4Mask("255.255.255.0"));
-			addressHelper.Assign(device);
-			m_clusterIpAddress[0] = addressHelper;
-		}
-		else
-		{
-			m_relayApIpAddress[0].Assign(device);
-		}
-	}
-	else switch(type)
+	switch(type)
 	{
 	case NodeSpec::STA_NORMAL:
 	{
@@ -478,75 +451,181 @@ Experiment::SetupNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint3
 
 }
 
+void
+Experiment::SetupNormalNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate)
+{
+	WifiHelper wifiHelper;
+	wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211n_5GHZ);
+	//TODO Should the FragmentationThreshold be set here or not down for the client nodes?
+	wifiHelper.SetRemoteStationManager("ns3::ConstantRateWifiManager",
+			"DataMode", StringValue("HtMcs15"),
+			"ControlMode", StringValue("HtMcs15"));
+
+	//			"FragmentationThreshold", UintegerValue(600)); //TODO The actual value should be confirmed
+
+	SpectrumWifiPhyHelper wifiPhyHelper;
+	wifiPhyHelper = SpectrumWifiPhyHelper::Default ();
+	wifiPhyHelper.Set ("ShortGuardEnabled", BooleanValue (true));
+	wifiPhyHelper.Set ("Antennas", UintegerValue (2));
+	wifiPhyHelper.Set ("MaxSupportedTxSpatialStreams", UintegerValue (2));
+	wifiPhyHelper.Set ("MaxSupportedRxSpatialStreams", UintegerValue (2));
+	//	  wifiPhyHelper.Set ("RxGain", DoubleValue (0.0));
+	//	  wifiPhyHelper.Set ("RxNoiseFigure", DoubleValue (0.0));
+	//	  wifiPhyHelper.Set ("EnergyDetectionThreshold", DoubleValue (-110.0));
+	//	  wifiPhyHelper.Set ("CcaMode1Threshold", DoubleValue (-110.0));
+	//	wifiPhyHelper.SetErrorRateModel("ns3::PsrErrorRateModel", "rate", DoubleValue(psr));
+	wifiPhyHelper.SetChannel (m_channel);
+	WifiMacHelper macHelper;
+
+
+	InternetStackHelper internet;
+	OlsrHelper olsr;
+	Ipv4StaticRoutingHelper staticRouting;
+	Ipv4ListRoutingHelper list;
+	list.Add (staticRouting, 0);
+	list.Add (olsr, 10);
+	internet.SetRoutingHelper (list);
+
+	internet.Install(node);
+
+
+	switch(type)
+	{
+	case NodeSpec::AP:
+	{
+		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(44));
+		// Setting a the Relay as an access point to it's clulser's stations.
+		std::stringstream ss;
+		Ssid ssid;
+		ss << "AP" << node->GetId();
+		ssid = Ssid (ss.str());
+
+		macHelper.SetType ("ns3::ApWifiMac",
+				"Ssid", SsidValue (ssid));
+
+		NetDeviceContainer device = wifiHelper.Install (wifiPhyHelper, macHelper, node);
+		m_relayClusterDevice.Add(device);
+
+
+		if(m_clusterIpAddress.count(node->GetId()) == 0)
+		{
+			ss.str("");
+			ss << "10.0." << node->GetId() << ".0";
+			Ipv4AddressHelper addressHelper;
+
+			addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+			addressHelper.Assign(device);
+			m_clusterIpAddress[node->GetId()] = addressHelper;
+		}
+		else
+		{
+			m_clusterIpAddress[node->GetId()].Assign(device);
+		}
+		break;
+	}
+	case NodeSpec::STA:
+	{
+		// Setting a the Relay as an access point to it's clulser's stations.
+		std::stringstream ss;
+		Ssid ssid;
+		ss << "AP" << relayId;
+		ssid = Ssid (ss.str());
+
+		wifiPhyHelper.Set ("ChannelNumber", UintegerValue(44));
+
+		macHelper.SetType ("ns3::StaWifiMac",
+				"Ssid", SsidValue (ssid));//				"BE_MaxAmpduSize", UintegerValue(0)); // Disable AMPDU (BE_MaxAmpduSize=0) to make sure Fragmentation Threshold is always used
+		NetDeviceContainer device = wifiHelper.Install(wifiPhyHelper, macHelper, node);
+
+		m_clusterDevices[relayId].Add(device);
+
+		Ipv4InterfaceContainer ipv4IfContainer;
+
+		if(m_clusterIpAddress.count(relayId) == 0)
+		{
+			ss.str("");
+			ss << "10.0." << relayId << ".0";
+			Ipv4AddressHelper addressHelper;
+
+			addressHelper.SetBase(Ipv4Address(ss.str().c_str()), Ipv4Mask("255.255.255.0"));
+			ipv4IfContainer = addressHelper.Assign(device);
+			m_clusterIpAddress[relayId] = addressHelper;
+		}
+		else
+		{
+			ipv4IfContainer = m_clusterIpAddress[relayId].Assign(device);
+		}
+		break;
+	}
+	case NodeSpec::STA_NORMAL:
+	case NodeSpec::RELAY:
+	default: break;
+	}
+}
 
 void
 Experiment::CreateNodes (std::vector<NodeSpec> nodeSpecs, bool efiActive)
 {
 
+	m_isEfi = efiActive;
+
 	for(uint32_t i = 0; i != nodeSpecs.size(); i++)
 	{
+		uint32_t id = nodeSpecs[i].GetId();
+		NodeSpec::NodeType type = (NodeSpec::NodeType)nodeSpecs[i].GetType();
+		Vector3D position = nodeSpecs[i].GetPosition();
+		double relayId = nodeSpecs[i].GetRelayId();
+		double oPsr = nodeSpecs[i].GetPsr(0);
+		double nPsr = nodeSpecs[i].GetPsr(2);
+		double psr;
+		double resRate = nodeSpecs[i].GetResourceRate();
+
+
+		if(!efiActive)
+		{
+			psr = oPsr;
+			relayId = 0;
+			resRate = 0;
+			if(type != NodeSpec::AP)
+			{
+				type = NodeSpec::STA;
+			}
+
+		}
+		else
+		{
+			psr = nPsr;
+		}
+
 		Ptr<Node> node = CreateObject<Node> ();
-		NS_ASSERT(node->GetId() == nodeSpecs[i].GetId());
-		m_nodePsrValues[node->GetId()] = nodeSpecs[i].GetPsr(2);
+		NS_ASSERT(node->GetId() == id);
+		m_nodePsrValues[id] = psr;
 
 		Ptr<ConstantPositionMobilityModel> mobility = CreateObject<ConstantPositionMobilityModel> ();
-		mobility->SetPosition(nodeSpecs[i].GetPosition());
+		mobility->SetPosition(position);
 		node->AggregateObject(mobility);
 
-		if(nodeSpecs[i].GetResourceRate()!=0)
-			m_relayResourceMap[nodeSpecs[i].GetId()] = nodeSpecs[i].GetResourceRate();
+		if(resRate!=0)
+			m_relayResourceMap[id] = resRate;
 
-		m_allNodes.Add(node);
-		if(nodeSpecs[i].GetType()==NodeSpec::RELAY)
+		if(efiActive)
 		{
-			m_relayNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::RELAY, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(), efiActive);
-		}
-		else if(nodeSpecs[i].GetType()==NodeSpec::STA)
-		{
-			m_clusterNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::STA, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(), efiActive);
 
+			SetupEfiNode(node, type, psr, relayId, resRate);
 		}
-		else if(nodeSpecs[i].GetType()==NodeSpec::AP)
+		else // !efiActive
 		{
-			m_apNodes.Add(node);
-			SetupNode(node, NodeSpec::AP, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(),  efiActive);
-		}
-		else if(nodeSpecs[i].GetType()==NodeSpec::STA_NORMAL)
-		{
-			m_relayNodes[nodeSpecs[i].GetRelayId()].Add(node);
-			SetupNode(node, NodeSpec::STA_NORMAL, efiActive? nodeSpecs[i].GetPsr(2): nodeSpecs[i].GetPsr(0), nodeSpecs[i].GetRelayId(), nodeSpecs[i].GetResourceRate(),  efiActive);
+			SetupNormalNode(node, type, psr, relayId, resRate);
 		}
 	}
 
-//	for(std::map<uint32_t, NodeContainer>::iterator it = m_relayNodes.begin(); it!=m_relayNodes.end(); it++)
-//	{
-//		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
-//		{
-////			uint32_t infN = (*nIt)->GetObject<Ipv4>()->GetNInterfaces();
-////			NS_LOG_INFO("RELAY " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(infN - 1,0).GetLocal() // TODO Because we always create the AP interface before the STA interface
-////							<< " connected to AP address " << m_apNodes.Get(0)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
-////							<< std::endl);
-//		}
-//
-//	}
-//	for(std::map<uint32_t, NodeContainer>::iterator it = m_clusterNodes.begin(); it!= m_clusterNodes.end(); it++)
-//	{
-//		for(NodeContainer::Iterator nIt = it->second.Begin(); nIt != it->second.End(); nIt++)
-//		{
-////			NS_LOG_INFO("STA " << "address " << (*nIt)->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
-////						<< " connected to RELAY address " << NodeList::GetNode(it->first)->GetObject<Ipv4>()->GetAddress(1, 0).GetLocal()
-////						<< std::endl);
-//		}
-//	}
-
-	for(NodeContainer::Iterator it = m_relayNodes[0].Begin(); it!= m_relayNodes[0].End(); it++)
+	for(NetDeviceContainer::Iterator it = m_relayToApDevice.Begin(); it!= m_relayToApDevice.End(); it++)
 	{
-		uint32_t id = (*it)->GetId();
+		uint32_t id = (*it)->GetNode()->GetId();
 
 		ClusterSleep(id, Now());
 	}
+
 	Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelWidth", UintegerValue (20));
 	m_clusterIpAddress.clear();
 	m_relayApIpAddress.clear();
@@ -805,6 +884,8 @@ void Experiment::Initialize ()
 	m_rand = CreateObject<UniformRandomVariable>();
 	m_rand2 = CreateObject<UniformRandomVariable>();
 
+	m_isEfi = true;
+
 }
 
 //TODO fix return variables
@@ -867,7 +948,7 @@ Experiment::ResetStats()
 bool
 Experiment::ClientsAssociated (uint32_t id)
 {
-	if(m_clusterNodes[id].GetN() > m_relayAssocTable[id])
+	if(m_clusterDevices[id].GetN() > m_relayAssocTable[id])
 		return false;
 
 //	NS_LOG_INFO(m_relayAssocTable[id] << " Clients connected to relay " << id << std::endl);
@@ -914,8 +995,173 @@ Experiment::SetupPsr(NetDeviceContainer devices, double val = 2)
       phy->SetErrorRateModel(err);
     }
 }
+
 void
 Experiment::Run(bool downlink, double totResources)
+{
+	if(!m_isEfi)
+		RunNormal(downlink, totResources);
+	else
+		RunEfi(downlink, totResources);
+}
+
+void
+Experiment::RunNormal(bool downlink, double totResources)
+{
+	for(uint32_t idx = 0; idx< m_relayClusterDevice.GetN(); idx++)
+	{
+		uint32_t id = m_relayClusterDevice.Get(idx)->GetNode()->GetId();
+		Ptr<NetDevice> relayDevice = m_relayClusterDevice.Get(idx);
+
+		if(downlink)
+			NS_LOG_LOGIC("\n--- Running Downlink at Cluster " << id << " Resources " << totResources << "s ---\n");
+		else
+			NS_LOG_LOGIC("\n--- Running Uplink at Cluster " << id << " Resources " << totResources << "s ---\n");
+
+		NS_LOG_LOGIC("Clients in this cluster");
+		NetDeviceContainer clusterDevices = m_clusterDevices[id];
+		for(uint32_t i = 0; i < clusterDevices.GetN(); i++)
+		{
+			Ptr<Ipv4> ipv4 = clusterDevices.Get(i)->GetNode()->GetObject<Ipv4>();
+			NS_LOG_LOGIC(ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[clusterDevices.Get(i)->GetNode()->GetId()]);
+		}
+
+		SetupHooks (NetDeviceContainer(relayDevice));
+		SetupHooks (m_clusterDevices[id]);
+
+		ClusterWakeup(id, Now());
+		while(!ClientsAssociated(id))
+		{
+			Simulator::Stop(Seconds(20));
+			Simulator::Run();
+		}
+		ResetStats();
+
+
+		ApplicationContainer apps;
+		if(downlink)
+		{
+			apps = InstallApplications(NetDeviceContainer(relayDevice), m_clusterDevices[id]);
+		}
+		else
+		{
+			apps = InstallApplications(m_clusterDevices[id], NetDeviceContainer(relayDevice));
+		}
+
+		apps.Start(Seconds(0));
+		apps.Stop(Seconds(totResources));
+
+		Simulator::Stop(Seconds(totResources));
+
+		Simulator::Run();
+		ClusterSleep(id, Now());
+
+		NetDeviceContainer devices = m_clusterDevices[id];
+		if(downlink)
+		{
+			Ipv4InterfaceAddress address;
+
+			Ptr<Ipv4> ipv4 = relayDevice->GetNode()->GetObject<Ipv4>();
+			address = ipv4->GetAddress(ipv4->GetInterfaceForDevice(relayDevice), 0);
+
+			std::pair<Time, uint64_t> pair = m_queueWaitRecord[relayDevice];
+			double time = pair.first.GetSeconds();
+			double items = pair.second;
+			double queueAvgWait = (items == 0 ? 0:time/items);
+
+			double enqueued = (double)m_queueEnqueueRecord[relayDevice];
+			double dropped = (double)m_queueDropRecord[relayDevice];
+			double requeued = (double)m_queueRequeueRecord[relayDevice];
+
+			double dropRate;
+			double requeueRate;
+			if(enqueued == 0)
+			{
+				NS_LOG_UNCOND("No packets queued!!!");
+				dropRate = 0;
+				requeueRate = 0;
+			}
+			else
+			{
+				dropRate = dropped/enqueued;
+				requeueRate = requeued/enqueued;
+			}
+
+			NS_LOG_LOGIC("RelayID " << id << "\n"
+					<< "RelayIP " << address.GetLocal() << "\n"
+					<< "AvgQueueWait " << queueAvgWait << "s\n"
+					<< "QueueDropRate " << 100*dropRate << "%\n"
+					<< "QueueRequeueRate " << 100*requeueRate << "%\n"
+					<< "ClusterDownlinkThroughput " << m_totalPhyTxBytes[relayDevice]/totResources/1.0e6 << "MB/s\n"
+			);
+
+			for(uint32_t i = 0; i < devices.GetN(); i++)
+			{
+				double throughput1 = m_packetsTotal[devices.Get(i)]/totResources/1.0e6;
+				double throughput2 = m_totalPhyRxBytes[devices.Get(i)]/totResources/1.0e6;
+
+				NS_LOG_LOGIC("ClientRX " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
+						<< " " << throughput1 << "MB/s(data)"
+						<< " " << throughput2 << "MB/s(phy)"
+						<< " PSR " << m_nodePsrValues[devices.Get(i)->GetNode()->GetId()]
+				);
+
+			}
+		}
+		else
+		{
+			for(uint32_t i = 0; i < devices.GetN(); i++)
+			{
+				NS_LOG_LOGIC("Client " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal());
+				std::pair<Time, uint64_t> pair = m_queueWaitRecord[devices.Get(i)];
+				double time = pair.first.GetSeconds();
+				double items = pair.second;
+				double queueAvgWait = (items == 0 ? 0:time/items);
+
+				double enqueued = (double)m_queueEnqueueRecord[devices.Get(i)];
+				double dropped = (double)m_queueDropRecord[devices.Get(i)];
+				double requeued = (double)m_queueRequeueRecord[devices.Get(i)];
+
+				double dropRate;
+				double requeueRate;
+				if(enqueued == 0)
+				{
+					NS_LOG_UNCOND("No packets queued!!!");
+					dropRate = 0;
+					requeueRate = 0;
+				}
+				else
+				{
+					dropRate = dropped/enqueued;
+					requeueRate = requeued/enqueued;
+				}
+
+				NS_LOG_LOGIC("AvgQueueWait " << queueAvgWait << "s\n"
+						<< "QueueDropRate " << 100*dropRate << "%\n"
+						<< "QueueRequeueRate " << 100*requeueRate << "%"
+				);
+
+				double throughput1 = m_packetsTotal[devices.Get(i)]/totResources/1.0e6;
+				double throughput2 = m_totalPhyTxBytes[devices.Get(i)]/totResources/1.0e6;
+				NS_LOG_LOGIC("ThroughputTX " << throughput1 << "MB/s(data)"
+						<< " " << throughput2 << "MB/s(phy)\n");
+			}
+			NS_LOG_LOGIC("RelayRxThroughput " << m_packetsTotal[relayDevice]/totResources/1.0e6 << "MB/s(data) "
+					<< m_totalPhyRxBytes[relayDevice]/totResources/1.0e6 << "MB/s(phy)");
+
+		}
+		ResetStats();
+
+		if(downlink)
+			NS_LOG_LOGIC("--- Finished Running Downlink at Cluster " << id << " ---");
+		else
+			NS_LOG_LOGIC("--- Finished Running Uplink at Cluster " << id << " ---");
+
+	}
+}
+
+void
+Experiment::RunEfi(bool downlink, double totResources)
 {
 
 	//  Simulator::Schedule(Now(), &SimulationProgress);
@@ -932,11 +1178,11 @@ Experiment::Run(bool downlink, double totResources)
 			NS_LOG_LOGIC("\n--- Running Uplink at Cluster " << id << " Resources " << resRate << "s ---\n");
 
 		NS_LOG_LOGIC("Clients in this cluster");
-		NodeContainer nodes = m_clusterNodes[id];
-		for(uint32_t i = 0; i < nodes.GetN(); i++)
+		NetDeviceContainer clusterDevices = m_clusterDevices[id];
+		for(uint32_t i = 0; i < clusterDevices.GetN(); i++)
 		{
-			Ptr<Ipv4> ipv4 = nodes.Get(i)->GetObject<Ipv4>();
-			NS_LOG_LOGIC(ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[nodes.Get(i)->GetId()]);
+			Ptr<Ipv4> ipv4 = clusterDevices.Get(i)->GetNode()->GetObject<Ipv4>();
+			NS_LOG_LOGIC(ipv4->GetAddress(1,0).GetLocal() << " PSR = " << m_nodePsrValues[clusterDevices.Get(i)->GetNode()->GetId()]);
 		}
 
 		SetupHooks (NetDeviceContainer(relayDevice));
@@ -1021,6 +1267,7 @@ Experiment::Run(bool downlink, double totResources)
 				NS_LOG_LOGIC("ClientRX " << devices.Get(i)->GetNode()->GetObject<Ipv4>()->GetAddress(1,0).GetLocal()
 						<< " " << throughput1 << "MB/s(data)"
 						<< " " << throughput2 << "MB/s(phy)\n"
+						<< " PSR " << m_nodePsrValues[devices.Get(i)->GetNode()->GetId()]
 				);
 
 			}

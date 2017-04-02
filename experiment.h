@@ -49,6 +49,8 @@ public:
   void ClusterSleep(uint32_t id, Time time);
 
   void Run(bool downlink = true, double totResources = 100);
+  void RunEfi(bool downlink = true, double totResources = 100);
+  void RunNormal(bool downlink = true, double totResources = 100);
 
   void ResetStats();
 
@@ -63,7 +65,9 @@ public:
 
 private:
   void Initialize ();
-  void SetupNode(Ptr<Node>, NodeSpec::NodeType, double psr, uint32_t relayId, double resRate = 100, bool efiActive = true);
+  void SetupEfiNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate = 100);
+  void SetupNormalNode(Ptr<Node>node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate = 100);
+
   void SetupReceivePacket (Ptr<NetDevice> device);
   void SetupReceivePacket (NetDeviceContainer devices);
 
@@ -89,10 +93,6 @@ private:
   NetDeviceContainer m_relayClusterDevice;
   NetDeviceContainer m_relayToApDevice;
 
-  NodeContainer m_allNodes;
-  NodeContainer m_apNodes;
-  std::map<uint32_t, NodeContainer> m_relayNodes;
-  std::map<uint32_t, NodeContainer> m_clusterNodes;
 
   std::map<Ptr<NetDevice>, uint64_t> m_packetsTotal;
   std::map<Ptr<NetDevice>, uint64_t> m_totalPhyTxBytes;
@@ -119,6 +119,7 @@ private:
   Ptr<UniformRandomVariable> m_rand;
   Ptr<UniformRandomVariable> m_rand2;
 
+  bool m_isEfi;
 //  std::map<Mac48Address, Ptr<WifiNetDevice> > m_deviceAddressMap;
 };
 
