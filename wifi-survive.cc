@@ -19,14 +19,14 @@ using namespace ns3;
 int main (int argc, char *argv[])
 {
 
-	bool efiActive = true;
+	bool efi = true;
 	double totResources = 10;
 	bool downlink = true;
 	bool uplink = true;
 
 	std::string inputfile = "scratch/NS3Input.txt";
 	CommandLine cmd;
-	cmd.AddValue("efiActive", "normal or Efi mode", efiActive);
+	cmd.AddValue("efi", "normal or Efi mode", efi);
 	cmd.AddValue("totalResources", "Total Resources (s)", totResources);
 	cmd.AddValue("downlink", "Total Resources (s)", downlink);
 	cmd.AddValue("uplink", "Total Resources (s)", uplink);
@@ -49,7 +49,7 @@ int main (int argc, char *argv[])
 		std::cout.flush();
 
 	    Experiment experiment;
-	    experiment.CreateNodes(*it, efiActive);
+	    experiment.CreateNodes(*it, efi);
 	    if(downlink)
 	    	experiment.Run(true, totResources);
 	    if(uplink)

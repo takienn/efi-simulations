@@ -86,6 +86,8 @@ private:
   void EnableActiveProbing(Ptr<StaWifiMac> mac);
   void SetupHooks (NetDeviceContainer devices);
 
+  void PrintResults(bool downlink, uint32_t idx, double runtime);
+
   void SetupPsr(NetDeviceContainer devices, double val);
   Ptr<SpectrumChannel> m_channel; // SpectrumChannel used across the whole simulation
   NetDeviceContainer m_apDevice;
