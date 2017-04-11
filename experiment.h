@@ -68,6 +68,7 @@ private:
   void SetupEfiNode(Ptr<Node> node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate = 100);
   void SetupNormalNode(Ptr<Node>node, NodeSpec::NodeType type, double psr, uint32_t relayId, double resRate = 100);
 
+  NetDeviceContainer SetupInterference ();
   void SetupReceivePacket (Ptr<NetDevice> device);
   void SetupReceivePacket (NetDeviceContainer devices);
 
@@ -106,6 +107,7 @@ private:
   std::map<Ptr<NetDevice>, uint64_t> m_queueDropRecord;
 
   std::map<uint32_t, double> m_nodePsrValues;
+  std::map<uint32_t, NodeSpec::NodeType> m_nodeTypes;
 
 
   std::map<uint32_t, Ipv4AddressHelper> m_relayApIpAddress;
@@ -122,6 +124,8 @@ private:
   Ptr<UniformRandomVariable> m_rand2;
 
   bool m_isEfi;
+  bool m_apHooked;
+  bool m_apAwake;
 //  std::map<Mac48Address, Ptr<WifiNetDevice> > m_deviceAddressMap;
 };
 
