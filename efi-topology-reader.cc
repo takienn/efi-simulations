@@ -59,8 +59,6 @@ EfiTopologyReader::ReadNodeSpec (void)
 
 		std::vector<NodeSpec> nodeSpecs;
 
-		NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
-		nodeSpecs.push_back(apNodeSpec);
 //		std::cout << apNodeSpec;
 
 		type = 0;
@@ -132,6 +130,10 @@ EfiTopologyReader::ReadNodeSpec (void)
 				i = 0;
 			}
 		}
+		lineBuffer2 >> resRate;
+
+		NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
+		nodeSpecs.insert(nodeSpecs.begin(), apNodeSpec);
 
 		nodeSpecsList.push_back(nodeSpecs);
 	}
