@@ -24,7 +24,7 @@ int main (int argc, char *argv[])
 	bool downlink = true;
 	bool uplink = true;
 
-	std::string inputfile = "scratch/NS3Input.txt";
+	std::string inputfile = "scratch/NS3Input_K1.txt";
 	CommandLine cmd;
 	cmd.AddValue("efi", "normal or Efi mode", efi);
 	cmd.AddValue("totalResources", "Total Resources (s)", totResources);
@@ -38,7 +38,7 @@ int main (int argc, char *argv[])
 	Experiment experiment;
 
 	EfiTopologyReader topoReader;
-	topoReader.SetFileName("scratch/NS3Input.txt");
+	topoReader.SetFileName(inputfile);
 
 
 	std::vector<std::vector<NodeSpec> > nodesList = topoReader.ReadNodeSpec();

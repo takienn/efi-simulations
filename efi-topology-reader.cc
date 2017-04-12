@@ -1,7 +1,11 @@
 #include "efi-topology-reader.h"
 #include "ns3/core-module.h"
 
-using namespace ns3;
+namespace ns3
+
+{
+  NS_LOG_COMPONENT_DEFINE("EfiTopologyReader");
+
 TypeId
 EfiTopologyReader::GetTypeId()
 {
@@ -49,6 +53,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 	uint32_t relayId = 0;
 
 
+	double count_relay, count_ap, count_sta, count_sta_normal;
 	while (!topgen.eof ())
 	{
 		line1.clear ();
@@ -131,6 +136,13 @@ EfiTopologyReader::ReadNodeSpec (void)
 				nodeSpec = NodeSpec(id, (NodeSpec::NodeType)type, Vector3D(locX,locY,0), relayId, oPsr*0.01, rPsr*0.01, nPsr*0.01, resRate);
 				nodeSpecs.push_back(nodeSpec);
 				i = 0;
+
+				if(type == 1)
+				  count_relay++;
+				if(type == 2)
+				  count_sta++;
+				if(type==3)
+				  count_sta_normal++;
 			}
 		}
 		lineBuffer2 >> resRate;
@@ -138,6 +150,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 		NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
 		nodeSpecs.insert(nodeSpecs.begin(), apNodeSpec);
 
+		count_ap++;
 		nodeSpecsList.push_back(nodeSpecs);
 	}
 	return nodeSpecsList;
@@ -151,4 +164,5 @@ EfiTopologyReader::EfiTopologyReader()
 EfiTopologyReader::~EfiTopologyReader()
 {
 
+}
 }
