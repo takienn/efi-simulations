@@ -1054,6 +1054,8 @@ Experiment::SetupHooks (NetDeviceContainer devices)
 {
   for (uint32_t i = 0; i < devices.GetN (); i++)
   {
+    NS_ASSERT(!m_hookedDevices[devices.Get(i)]);
+
     Ptr<RegularWifiMac> mac =
 	devices.Get (i)->GetObject<WifiNetDevice> ()->GetMac ()->GetObject<
 	    RegularWifiMac> ();
@@ -1078,6 +1080,8 @@ Experiment::SetupHooks (NetDeviceContainer devices)
 	MakeBoundCallback (&MonitorPhyRx, this, devices.Get (i)));
 
 //		SetupReceivePacket(devices.Get(i));
+
+    m_hookedDevices[devices.Get(i)] = true;
   }
 
 }

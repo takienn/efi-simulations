@@ -126,6 +126,8 @@ private:
   bool m_isEfi;
   bool m_apHooked;
   bool m_apAwake;
+
+  std::map<Ptr<NetDevice>, bool> m_hookedDevices;
 //  std::map<Mac48Address, Ptr<WifiNetDevice> > m_deviceAddressMap;
 };
 

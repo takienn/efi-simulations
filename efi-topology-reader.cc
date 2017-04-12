@@ -112,7 +112,10 @@ EfiTopologyReader::ReadNodeSpec (void)
 				NS_ASSERT(nPsr >= 0);
 				break;
 			case 7:
-				relayId = (uint32_t) value;
+			  if(type==3 || type==1)
+			    relayId=0;
+			  else
+			    relayId = (uint32_t) value;
 				break;
 			default:
 				NS_FATAL_ERROR("Can't reach 8 parameters");
