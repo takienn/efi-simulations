@@ -53,6 +53,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 	uint32_t relayId = 0;
 
 
+	uint32_t totalNodes=1;
 	double count_relay, count_ap, count_sta, count_sta_normal;
 	while (!topgen.eof ())
 	{
@@ -91,6 +92,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 			{
 			case 0:
 				id = (uint32_t)value;
+				totalNodes++;
 				break;
 			case 1:
 				type = (uint32_t)value;
@@ -147,10 +149,13 @@ EfiTopologyReader::ReadNodeSpec (void)
 		}
 		lineBuffer2 >> resRate;
 
-		NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
-		nodeSpecs.insert(nodeSpecs.begin(), apNodeSpec);
+		if(totalNodes>0)
+		{
+		  NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
+		  nodeSpecs.insert(nodeSpecs.begin(), apNodeSpec);
+		  count_ap++;
+		}
 
-		count_ap++;
 		nodeSpecsList.push_back(nodeSpecs);
 	}
 	return nodeSpecsList;
