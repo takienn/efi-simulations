@@ -1,0 +1,50 @@
+--------- Running new experiment ---------
+Downlink Cluster 0 0.7991s
+AP ID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.00375616  	78.9531      	0.501656   	15.4253   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.00375616  	78.9531      	0.501656   	15.4253   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+0       0.7991  1       	0.622	9.58628   
+0       0.7991  2       	0.972	15.0236   
+0       0.7991  5       	0.948	14.6217   
+0       0.7991  6       	0.972	15.0053   
+0       0.7991  7       	0.906	13.9911   
+0       0.7991  9       	0.894	13.8324   
+0       0.7991  11      	0.866	13.4008   
+0       0.7991  12      	0.93 	14.3611   
+0       0.7991  13      	0.942	14.5638   
+0       0.7991  15      	0.772	11.9277   
+0       0.7991  16      	0.924	14.3347   
+0       0.7991  17      	0.948	14.626    
+0       0.7991  18      	0.662	10.2644   
+0       0.7991  19      	0.542	8.26624   
+Downlink Cluster 4 0.0883s
+AP ID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.00760583  	32.354       	0.353982   	5.36864   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+4      	0.00462193  	0            	1.00814    	10.4392   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+4       0.0883  3       	0.629	6.7881    
+Downlink Cluster 8 0.069s
+AP ID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.0115383   	21.1111      	0.333333   	2.71036   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+8      	0.00363902  	0            	0.963644   	13.2005   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+8       0.069   14      	0.468	6.18548   
+Downlink Cluster 20 0.0436s
+AP ID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.00439335  	0            	0.955414   	7.11544   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+20     	0.00450167  	0            	0.497512   	5.96718   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+20      0.0436  10      	0.179	0.617018  
