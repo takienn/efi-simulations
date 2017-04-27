@@ -1,0 +1,41 @@
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+0      	0.00389643  	83.4737      	0.46426    	15.001    
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+0       0.6472  4       	0.964	14.4478   
+0       0.6472  8       	0.828	12.3666   
+0       0.6472  9       	0.998	14.9287   
+0       0.6472  12      	0.772	11.5894   
+0       0.6472  13      	0.662	9.81766   
+0       0.6472  14      	0.548	8.27061   
+0       0.6472  15      	0.94 	13.9994   
+0       0.6472  17      	0.476	7.18175   
+0       0.6472  19      	0.94 	14.0603   
+0       0.6472  20      	0.92 	13.657    
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+3      	0.00437778  	1.5813       	0.928154   	11.2133   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+3       0.0918  10      	0.692	7.81397   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+5      	0.00516713  	71.4058      	0.391155   	10.6324   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+5       0.1394  6       	0.534	5.87503   
+5       0.1394  7       	0.674	7.2593    
+5       0.1394  16      	0.407	4.55641   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+11     	0.00503074  	0            	0.912721   	9.87337   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+11      0.0606  1       	0.478	4.49622   
+
+RelayID	AvgQueueWait	QueueDropRate	RequeueRate	Throughput
+18     	0.00322533  	0            	0.893356   	12.7239   
+
+RelayID	ResRate	ClientID	PSR	Throughput	
+18      0.0611  2       	0.069	0.679705  
