@@ -154,6 +154,7 @@ EfiTopologyReader::ReadNodeSpec (void)
 		  NodeSpec apNodeSpec(0, NodeSpec::AP, Vector3D(0, 0, 0), relayId, 1, 1, 1, resRate);
 		  nodeSpecs.insert(nodeSpecs.begin(), apNodeSpec);
 		  count_ap++;
+		  totalNodes=0;
 		}
 
 		nodeSpecsList.push_back(nodeSpecs);
