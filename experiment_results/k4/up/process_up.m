@@ -71,7 +71,7 @@ qwt_err=[u,accumarray(idx,qwt(:,2),[],@std), accumarray(idx,qwt(:,3),[],@std)];
         qwt_err(:,2)=qwt_err(:,2)./l;
         qwt_err(:,3)=qwt_err(:,2)./l;
     end
-qwt=[u,accumarray(idx,qwt(:,2),[],@mean), accumarray(idx,qwt(:,3),[],@mean)];
+qwt=[u,accumarray(idx,qwt(:,2),[],@mean), accumarray(idx,qwt(:,3),[],@mean), accumarray(idx,qwt(:,1),[],@sum)];
 
 efi_qwt=[];
 for i =1:length(efi_up)
@@ -83,12 +83,24 @@ for i =1:length(normal_up)
     normal_qwt = [normal_qwt;normal_up{i}(:,4)];
 end
 
-barwitherr(qwt_err(:,2:3), qwt(:,2:3));
-legend('EFI','WIFI');
-set(gca, 'XTickLabel', {'5%','10%','15%','20%'});
+avg_qwt_all = figure;
+colormap([1 1 1]);
+b = barwitherr(qwt_err(:,2:3), qwt(:,2:3));
+% set(gca, 'XTickLabel', {'5%','10%','15%','20%'});
 title('EFI vs WIFI average Queue Wait time');
+ylim([0 0.07]);
+hatchfill2(b(1),'single');
+hatchfill2(b(2),'fill');
+xlabel('Cluster Size (K)');
+ylabel('Average queue wait (s)');
+% set(gca,'XTickLabel',{'5%','10%','15%','20%'})
+[~,c,~,~]=legendflex([b(1) b(2)], {'EFI','WIFI'}, 'anchor', {'ne','ne'});
+hatchfill2(c(3),'single');
+hatchfill2(c(4),'fill');
+saveas(avg_qwt_all,'avg_qwt_k4.fig','fig');
+saveas(avg_qwt_all,'avg_qwt_k4.png','png');
 
-figure;
+avg_qwt_ecdf = figure;
 title('EFI vs WIFI average Queue Wait time ECDF')
 hold on;
 
@@ -97,3 +109,5 @@ plot(cdf,f, 'DisplayName', 'WIFI');
 [f,cdf] = ecdf(efi_qwt);
 plot(cdf,f, 'DisplayName', 'EFI');
 legend show;
+saveas(avg_qwt_ecdf,'avg_qwt_ecdf.fig','fig');
+saveas(avg_qwt_ecdf,'avg_qwt_ecdf.png','png');
